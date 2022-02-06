@@ -40,7 +40,7 @@ public final class TemplateProject {
 
     public Platform getPlatform() {
         if (platform == null) {
-            platform = Platform.valueOf(this.property(Constants.TEMPLATE_PLATFORM_KEY));
+            platform = Platform.of(this.property(Constants.TEMPLATE_PLATFORM_KEY));
         }
         return platform;
     }

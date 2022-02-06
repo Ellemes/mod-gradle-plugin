@@ -1,5 +1,6 @@
 plugins {
     `java-gradle-plugin`
+    `maven-publish`
 }
 
 gradlePlugin {
@@ -10,6 +11,10 @@ gradlePlugin {
         }
     }
 }
+
+group = "ninjaphenix"
+base.archivesName.set("mod-gradle-plugin")
+version = "0.0.2"
 
 repositories {
     maven {

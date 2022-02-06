@@ -17,6 +17,11 @@ import java.util.Map;
 public final class GradlePlugin implements Plugin<Project> {
     @Override
     public void apply(Project target) {
+        // todo: validate this is the only task.
+        if (!target.getGradle().getGradleVersion().equals(Constants.REQUIRED_GRADLE_VERSION) && target.getGradle().getStartParameter().getTaskNames().stream().noneMatch(it -> it.equals(":wrapper"))) {
+            throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " +  Constants.REQUIRED_GRADLE_VERSION);
+        }
+
         Task buildTask = target.task("buildMod");
 
         target.subprojects(project -> {
