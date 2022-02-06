@@ -16,6 +16,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// Acknowledgements:
+//  Common source set inspired by https://github.com/samolego/MultiLoaderTemplate
 public final class GradlePlugin implements Plugin<Project> {
     boolean validatedLoomVersion = false;
     boolean validatedForgeGradleVersion = false;
@@ -40,14 +42,6 @@ public final class GradlePlugin implements Plugin<Project> {
                     extension.setTargetCompatibility(Constants.JAVA_VERSION);
                 });
 
-                if (templateProject.usesCommonSourceSet()) {
-                    SourceSetContainer sourceSets =  project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
-                    sourceSets.named("main").configure(sourceSet -> {
-                        sourceSet.getJava().srcDir("commonSrc/main/java");
-                        sourceSet.getResources().srcDir("commonSrc/main/resources");
-                    });
-                }
-
                 project.getTasks().withType(JavaCompile.class).configureEach(task -> task.getOptions().setEncoding("UTF-8"));
 
                 project.getDependencies().add("implementation", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
@@ -55,6 +49,16 @@ public final class GradlePlugin implements Plugin<Project> {
                 if (templateProject.producesReleaseArtifact()) {
                     buildTask.dependsOn(project.getTasks().getByName("build"));
                 }
+
+                templateProject.getCommonProject().ifPresent(common -> {
+                    project.getTasks().withType(ProcessResources.class).configureEach(task -> {
+                        task.from(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getResources());
+                    });
+
+                    project.getTasks().withType(JavaCompile.class).configureEach(task -> {
+                        task.source(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getAllSource());
+                    });
+                });
 
                 if (templateProject.getPlatform() == Platform.FABRIC) {
                     this.applyFabric(templateProject, target);
@@ -90,7 +94,7 @@ public final class GradlePlugin implements Plugin<Project> {
 
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
-        dependencies.add("mappings", "net.fabricmc:yarn:" + Constants.MINECRAFT_VERSION + "+build." + Constants.YARN_VERSION + ":v2");
+        dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
         if (project.hasProperty("fabric_api_version")) {
             dependencies.add("modImplementation", "net.fabricmc.fabric-api:fabric-api:" + templateProject.property("fabric_api_version"));
@@ -141,7 +145,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 Field field = loomPluginClass.getDeclaredField("LOOM_VERSION");
                 String loomVersion = (String) field.get(null);
                 if (!loomVersion.equals(Constants.REQUIRED_LOOM_VERSION)) {
-                    throw new IllegalStateException("This plugin requires loom " + Constants.REQUIRED_LOOM_VERSION + ".");
+                    throw new IllegalStateException("This plugin requires loom " + Constants.REQUIRED_LOOM_VERSION + ", current is " + loomVersion + ".");
                 }
                 validatedLoomVersion = true;
             } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException | ClassCastException e) {

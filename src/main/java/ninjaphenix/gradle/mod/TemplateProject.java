@@ -2,12 +2,14 @@ package ninjaphenix.gradle.mod;
 
 import org.gradle.api.Project;
 
+import java.util.Optional;
+
 public final class TemplateProject {
     private final Project project;
     private Boolean producesReleaseArtifact;
-    private Boolean usesCommonSourceSet;
     private Boolean usesDataGen;
     private Platform platform;
+    private Optional<Project> commonProject;
 
     public TemplateProject(Project project) {
         this.project = project;
@@ -24,13 +26,6 @@ public final class TemplateProject {
         return producesReleaseArtifact;
     }
 
-    public boolean usesCommonSourceSet() {
-        if (usesCommonSourceSet == null) {
-            usesCommonSourceSet = project.hasProperty("template.usesCommonSourceSet");
-        }
-        return usesCommonSourceSet;
-    }
-
     public boolean usesDataGen() {
         if (usesDataGen == null) {
             usesDataGen = project.hasProperty("template.usesDataGen");
@@ -43,6 +38,15 @@ public final class TemplateProject {
             platform = Platform.of(this.property(Constants.TEMPLATE_PLATFORM_KEY));
         }
         return platform;
+    }
+
+    public Optional<Project> getCommonProject() {
+        if (commonProject == null) {
+            if (project.hasProperty("template.commonProject")) {
+                commonProject = Optional.ofNullable(project.getRootProject().getChildProjects().get(this.<String>property("template.commonProject")));
+            }
+        }
+        return commonProject;
     }
 
     public <T> T property(String name) {
