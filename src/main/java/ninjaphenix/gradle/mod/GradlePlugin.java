@@ -12,19 +12,15 @@ import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.language.jvm.tasks.ProcessResources;
-import org.spongepowered.gradle.vanilla.MinecraftExtension;
-import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 
-import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 // Acknowledgements:
-//  Common source set inspired by https://github.com/samolego/MultiLoaderTemplate
+//  Common project inspired by https://github.com/samolego/MultiLoaderTemplate
 public final class GradlePlugin implements Plugin<Project> {
-    private boolean validatedVanillaGradleVersion = false;
     private boolean validatedLoomVersion = false;
     private boolean validatedForgeGradleVersion = false;
 
@@ -78,11 +74,30 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void applyCommon(TemplateProject templateProject, Project target) {
-        this.validateVanillaGradleVersionIfNeeded(target);
+        this.validateLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
-        project.apply(Map.of("plugin", "org.spongepowered.gradle.vanilla"));
-        project.getExtensions().configure(MinecraftExtension.class, extension -> {
-            extension.version(Constants.MINECRAFT_VERSION);
+        project.apply(Map.of("plugin", "fabric-loom"));
+
+        DependencyHandler dependencies = project.getDependencies();
+        dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
+        dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
+        dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
+
+        project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
+            extension.runs(container -> {
+                container.named("client", settings -> settings.ideConfigGenerated(false));
+                container.named("server", settings -> {
+                    settings.ideConfigGenerated(false);
+                    settings.serverWithGui();
+                });
+            });
+
+            //noinspection UnstableApiUsage
+            extension.getMixin().getUseLegacyMixinAp().set(false);
+
+            if (project.hasProperty("access_widener_path")) {
+                extension.getAccessWidenerPath().set(project.file(templateProject.property("access_widener_path")));
+            }
         });
     }
 
@@ -168,25 +183,6 @@ public final class GradlePlugin implements Plugin<Project> {
                         throw new IllegalStateException("This plugin requires loom " + Constants.REQUIRED_LOOM_VERSION + ", current is " + loomVersion + ".");
                     } else {
                         validatedLoomVersion = true;
-                        return;
-                    }
-                }
-            }
-            throw new IllegalStateException("This plugin requires loom, add it to the current project un-applied.");
-        }
-    }
-
-    private void validateVanillaGradleVersionIfNeeded(Project target) {
-        if (!validatedVanillaGradleVersion) {
-            Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
-            for (ResolvedArtifact artifact : artifacts) {
-                ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
-                if (identifier.getGroup().equals("org.spongepowered") && identifier.getName().equals("vanillagradle")) {
-                    String vanillaGradleVersion = identifier.getVersion();
-                    if (!vanillaGradleVersion.equals(Constants.REQUIRED_VANILLA_GRADLE_VERSION)) {
-                        throw new IllegalStateException("This plugin requires vanilla gradle " + Constants.REQUIRED_VANILLA_GRADLE_VERSION + ", current is " + vanillaGradleVersion + ".");
-                    } else {
-                        validatedVanillaGradleVersion = true;
                         return;
                     }
                 }
