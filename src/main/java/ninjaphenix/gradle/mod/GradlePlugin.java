@@ -16,6 +16,7 @@ import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.gradle.plugins.MixinExtension;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,11 @@ public final class GradlePlugin implements Plugin<Project> {
                 project.getExtensions().configure(JavaPluginExtension.class, extension -> {
                     extension.setSourceCompatibility(Constants.JAVA_VERSION);
                     extension.setTargetCompatibility(Constants.JAVA_VERSION);
+                });
+
+                project.getRepositories().maven(repo -> {
+                    repo.setUrl("https://cursemaven.com");
+                    repo.content(descriptor -> descriptor.includeGroup("curse.maven"));
                 });
 
                 project.getTasks().withType(JavaCompile.class).configureEach(task -> task.getOptions().setEncoding("UTF-8"));
@@ -179,10 +185,10 @@ public final class GradlePlugin implements Plugin<Project> {
         this.validateForgeGradleVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "net.minecraftforge.gradle"));
+        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
         if (templateProject.usesMixins()) {
             this.validateMixinGradleVersionIfNeeded(target);
             project.apply(Map.of("plugin", "org.spongepowered.mixin"));
-            SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
             project.getExtensions().configure(MixinExtension.class, extension -> {
                 extension.add(sourceSets.getByName("main"), templateProject.property("mod_id") + ".refmap.json");
                 extension.disableAnnotationProcessorCheck();
@@ -191,6 +197,34 @@ public final class GradlePlugin implements Plugin<Project> {
 
         project.getExtensions().configure(UserDevExtension.class, extension -> {
             extension.mappings("official", Constants.MINECRAFT_VERSION);
+
+            extension.getRuns().create("client", config -> {
+               config.workingDirectory(target.file("run"));
+               config.getMods().create(templateProject.property("mod_id"), modConfig -> modConfig.source(sourceSets.getByName("main")));
+            });
+
+            extension.getRuns().create("server", config -> {
+                config.workingDirectory(target.file("run"));
+                config.getMods().create(templateProject.property("mod_id"), modConfig -> modConfig.source(sourceSets.getByName("main")));
+            });
+
+            if (templateProject.usesDataGen()) {
+                extension.getRuns().create("data", config -> {
+                    config.workingDirectory(target.file("run"));
+                    //noinspection CodeBlock2Expr
+                    config.getMods().create(templateProject.property("mod_id"), modConfig -> {
+                        modConfig.sources(sourceSets.getByName("main"), sourceSets.getByName("datagen"));
+                    });
+                    List<String> args = new ArrayList<>(List.of("--mod", templateProject.property("mod_id"), "--all",
+                            "--output", project.file("src/main/generated").getPath(),
+                            "--existing", project.file("src/main/resources").getPath()));
+                    templateProject.getCommonProject().ifPresent(common -> {
+                        args.add("--existing");
+                        args.add(common.file("src/main/resources").getPath());
+                    });
+                    config.args(args);
+                });
+            }
 
             if (templateProject.usesAccessTransformers()) {
                 extension.accessTransformer(project.file("src/common/resources/META-INF/accesstransformer.cfg"));
