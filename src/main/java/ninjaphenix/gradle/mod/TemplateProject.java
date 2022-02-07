@@ -7,7 +7,7 @@ import java.util.Optional;
 public final class TemplateProject {
     private final Project project;
     private Boolean producesReleaseArtifact;
-    private Boolean usesDataGen;
+    private Boolean usesDataGen, usesMixins, usesAccessTransformers;
     private Platform platform;
     private Optional<Project> commonProject;
 
@@ -31,6 +31,20 @@ public final class TemplateProject {
             usesDataGen = project.hasProperty("template.usesDataGen");
         }
         return usesDataGen;
+    }
+
+    public boolean usesMixins() {
+        if (usesMixins == null) {
+            usesMixins = project.hasProperty("template.usesMixins");
+        }
+        return usesMixins;
+    }
+
+    public boolean usesAccessTransformers() {
+        if (usesAccessTransformers == null) {
+            usesAccessTransformers = project.hasProperty("template.usesAccessTransformers");
+        }
+        return usesAccessTransformers;
     }
 
     public Platform getPlatform() {
