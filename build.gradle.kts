@@ -29,11 +29,13 @@ repositories {
         name = "MinecraftForge"
         url = uri("https://maven.minecraftforge.net/")
     }
+    mavenCentral()
 }
 
 dependencies {
     compileOnly("net.fabricmc:fabric-loom:0.11.29")
     compileOnly("net.minecraftforge.gradle:ForgeGradle:5.1.26")
     compileOnly("org.spongepowered:mixingradle:0.7-SNAPSHOT")
+    implementation("org.jetbrains:annotations:23.0.0")
 }
 

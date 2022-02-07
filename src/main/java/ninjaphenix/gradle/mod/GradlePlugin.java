@@ -13,22 +13,25 @@ import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.language.jvm.tasks.ProcessResources;
+import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.gradle.plugins.MixinExtension;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 // Acknowledgements:
 //  Common project inspired by https://github.com/samolego/MultiLoaderTemplate
+@SuppressWarnings("unused")
 public final class GradlePlugin implements Plugin<Project> {
-    private boolean validatedLoomVersion = false;
-    private boolean validatedForgeGradleVersion = false;
-    private boolean validatedMixinGradleVersion = false;
+    private final AtomicBoolean validatedLoomVersion = new AtomicBoolean(false);
+    private final AtomicBoolean validatedForgeGradleVersion = new AtomicBoolean(false);
+    private final AtomicBoolean validatedMixinGradleVersion = new AtomicBoolean(false);
 
     @Override
-    public void apply(Project target) {
+    public void apply(@NotNull Project target) {
         this.validateGradleVersion(target);
 
         Task buildTask = target.task("buildMod");
@@ -56,10 +59,12 @@ public final class GradlePlugin implements Plugin<Project> {
                 }
 
                templateProject.getCommonProject().ifPresent(common -> {
+                   //noinspection UnstableApiUsage,CodeBlock2Expr
                    project.getTasks().withType(ProcessResources.class).configureEach(task -> {
                        task.from(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getResources());
                    });
 
+                   //noinspection CodeBlock2Expr
                    project.getTasks().withType(JavaCompile.class).configureEach(task -> {
                        task.source(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getAllSource());
                    });
@@ -217,59 +222,33 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void validateLoomVersionIfNeeded(Project target) {
-        if (!validatedLoomVersion) {
-            Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
-            for (ResolvedArtifact artifact : artifacts) {
-                ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
-                if (identifier.getGroup().equals("net.fabricmc") && identifier.getName().equals("fabric-loom")) {
-                    String loomVersion = identifier.getVersion();
-                    if (!loomVersion.equals(Constants.REQUIRED_LOOM_VERSION)) {
-                        throw new IllegalStateException("This plugin requires loom " + Constants.REQUIRED_LOOM_VERSION + ", current is " + loomVersion + ".");
-                    } else {
-                        validatedLoomVersion = true;
-                        return;
-                    }
-                }
-            }
-            throw new IllegalStateException("This plugin requires loom, add it to the current project un-applied.");
-        }
+        this.validatePluginVersionIfNeeded(target, validatedLoomVersion, "net.fabricmc", "fabric-loom", Constants.REQUIRED_LOOM_VERSION, "loom");
     }
 
     private void validateForgeGradleVersionIfNeeded(Project target) {
-        if (!validatedForgeGradleVersion) {
-            Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
-            for (ResolvedArtifact artifact : artifacts) {
-                ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
-                if (identifier.getGroup().equals("net.minecraftforge.gradle") && identifier.getName().equals("ForgeGradle")) {
-                    String forgeGradleVersion = identifier.getVersion();
-                    if (!forgeGradleVersion.equals(Constants.REQUIRED_FORGE_GRADLE_VERSION)) {
-                        throw new IllegalStateException("This plugin requires forge gradle " + Constants.REQUIRED_FORGE_GRADLE_VERSION + ", current is " + forgeGradleVersion + ".");
-                    } else {
-                        validatedForgeGradleVersion = true;
-                        return;
-                    }
-                }
-            }
-            throw new IllegalStateException("This plugin requires forge gradle, add it to the current project un-applied.");
-        }
+        this.validatePluginVersionIfNeeded(target, validatedForgeGradleVersion, "net.minecraftforge.gradle", "ForgeGradle", Constants.REQUIRED_FORGE_GRADLE_VERSION, "forge gradle");
     }
 
     private void validateMixinGradleVersionIfNeeded(Project target) {
-        if (!validatedMixinGradleVersion) {
+        this.validatePluginVersionIfNeeded(target, validatedMixinGradleVersion, "org.spongepowered", "mixingradle", Constants.REQUIRED_MIXIN_GRADLE_VERSION, "mixin gradle");
+    }
+
+    private void validatePluginVersionIfNeeded(Project target, AtomicBoolean checked, String group, String name, String requiredVersion, String friendlyName) {
+        if (!checked.get()) {
             Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
             for (ResolvedArtifact artifact : artifacts) {
                 ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
-                if (identifier.getGroup().equals("org.spongepowered") && identifier.getName().equals("mixingradle")) {
+                if (identifier.getGroup().equals(group) && identifier.getName().equals(name)) {
                     String mixinGradleVersion = identifier.getVersion();
-                    if (!mixinGradleVersion.equals(Constants.REQUIRED_MIXIN_GRADLE_VERSION)) {
-                        throw new IllegalStateException("This plugin requires mixin gradle " + Constants.REQUIRED_MIXIN_GRADLE_VERSION + ", current is " + mixinGradleVersion + ".");
+                    if (!mixinGradleVersion.equals(requiredVersion)) {
+                        throw new IllegalStateException("This plugin requires " + friendlyName + requiredVersion + ", current is " + mixinGradleVersion + ".");
                     } else {
-                        validatedMixinGradleVersion = true;
+                        checked.set(true);
                         return;
                     }
                 }
             }
-            throw new IllegalStateException("This plugin requires mixin gradle, add it to the current project un-applied.");
+            throw new IllegalStateException("This plugin requires " + friendlyName + ", add it to the current project un-applied.");
         }
     }
 }
