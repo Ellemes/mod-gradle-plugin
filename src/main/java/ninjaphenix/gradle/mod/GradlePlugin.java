@@ -81,8 +81,7 @@ public final class GradlePlugin implements Plugin<Project> {
 
                 if (templateProject.getPlatform() == Platform.COMMON) {
                     this.applyCommon(templateProject, target);
-                }
-                else if (templateProject.getPlatform() == Platform.FABRIC) {
+                } else if (templateProject.getPlatform() == Platform.FABRIC) {
                     this.applyFabric(templateProject, target);
                 } else if (templateProject.getPlatform() == Platform.FORGE) {
                     this.applyForge(templateProject, target);
@@ -177,8 +176,8 @@ public final class GradlePlugin implements Plugin<Project> {
         project.apply(Map.of("plugin", "net.minecraftforge.gradle"));
         if (templateProject.usesMixins()) {
             this.validateMixinGradleVersionIfNeeded(target);
-            SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
             project.apply(Map.of("plugin", "org.spongepowered.mixin"));
+            SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
             project.getExtensions().configure(MixinExtension.class, extension -> {
                 extension.add(sourceSets.getByName("main"), templateProject.property("mod_id") + ".refmap.json");
                 extension.disableAnnotationProcessorCheck();
