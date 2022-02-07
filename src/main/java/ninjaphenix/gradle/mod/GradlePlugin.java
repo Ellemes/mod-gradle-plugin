@@ -4,23 +4,29 @@ import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.ModuleVersionIdentifier;
+import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.language.jvm.tasks.ProcessResources;
+import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 // Acknowledgements:
 //  Common source set inspired by https://github.com/samolego/MultiLoaderTemplate
 public final class GradlePlugin implements Plugin<Project> {
-    boolean validatedLoomVersion = false;
-    boolean validatedForgeGradleVersion = false;
+    private boolean validatedVanillaGradleVersion = false;
+    private boolean validatedLoomVersion = false;
+    private boolean validatedForgeGradleVersion = false;
 
     @Override
     public void apply(Project target) {
@@ -50,20 +56,33 @@ public final class GradlePlugin implements Plugin<Project> {
                     buildTask.dependsOn(project.getTasks().getByName("build"));
                 }
 
-                templateProject.getCommonProject().ifPresent(common -> {
-                    project.getTasks().withType(ProcessResources.class).configureEach(task -> {
-                        task.from(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getResources());
-                    });
+               templateProject.getCommonProject().ifPresent(common -> {
+                   project.getTasks().withType(ProcessResources.class).configureEach(task -> {
+                       task.from(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getResources());
+                   });
 
-                    project.getTasks().withType(JavaCompile.class).configureEach(task -> {
-                        task.source(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getAllSource());
-                    });
-                });
+                   project.getTasks().withType(JavaCompile.class).configureEach(task -> {
+                       task.source(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getAllSource());
+                   });
+
+                   project.getDependencies().add("compileOnly", common);
+               });
 
                 if (templateProject.getPlatform() == Platform.FABRIC) {
                     this.applyFabric(templateProject, target);
+                } else if (templateProject.getPlatform() == Platform.COMMON) {
+                    this.applyCommon(templateProject, target);
                 }
             }
+        });
+    }
+
+    private void applyCommon(TemplateProject templateProject, Project target) {
+        this.validateVanillaGradleVersionIfNeeded(target);
+        Project project = templateProject.getProject();
+        project.apply(Map.of("plugin", "org.spongepowered.gradle.vanilla"));
+        project.getExtensions().configure(MinecraftExtension.class, extension -> {
+            extension.version(Constants.MINECRAFT_VERSION);
         });
     }
 
@@ -140,27 +159,39 @@ public final class GradlePlugin implements Plugin<Project> {
 
     private void validateLoomVersionIfNeeded(Project target) {
         if (!validatedLoomVersion) {
-            try {
-                Class<?> loomPluginClass = Class.forName("net.fabricmc.loom.LoomGradlePlugin");
-                Field field = loomPluginClass.getDeclaredField("LOOM_VERSION");
-                String loomVersion = (String) field.get(null);
-                if (!loomVersion.equals(Constants.REQUIRED_LOOM_VERSION)) {
-                    throw new IllegalStateException("This plugin requires loom " + Constants.REQUIRED_LOOM_VERSION + ", current is " + loomVersion + ".");
+            Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
+            for (ResolvedArtifact artifact : artifacts) {
+                ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
+                if (identifier.getGroup().equals("net.fabricmc") && identifier.getName().equals("fabric-loom")) {
+                    String loomVersion = identifier.getVersion();
+                    if (!loomVersion.equals(Constants.REQUIRED_LOOM_VERSION)) {
+                        throw new IllegalStateException("This plugin requires loom " + Constants.REQUIRED_LOOM_VERSION + ", current is " + loomVersion + ".");
+                    } else {
+                        validatedLoomVersion = true;
+                        return;
+                    }
                 }
-                validatedLoomVersion = true;
-            } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException | ClassCastException e) {
-                String reason;
-                if (e instanceof ClassNotFoundException) {
-                    reason = "Class moved.";
-                } else if (e instanceof NoSuchFieldException) {
-                    reason = "Field moved.";
-                } else if (e instanceof IllegalAccessException) {
-                    reason = "Cannot access field / class.";
-                } else {
-                    reason = "Field type changed.";
-                }
-                target.getLogger().warn("Failed to validate loom version: " + reason);
             }
+            throw new IllegalStateException("This plugin requires loom, add it to the current project un-applied.");
+        }
+    }
+
+    private void validateVanillaGradleVersionIfNeeded(Project target) {
+        if (!validatedVanillaGradleVersion) {
+            Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
+            for (ResolvedArtifact artifact : artifacts) {
+                ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
+                if (identifier.getGroup().equals("org.spongepowered") && identifier.getName().equals("vanillagradle")) {
+                    String vanillaGradleVersion = identifier.getVersion();
+                    if (!vanillaGradleVersion.equals(Constants.REQUIRED_VANILLA_GRADLE_VERSION)) {
+                        throw new IllegalStateException("This plugin requires vanilla gradle " + Constants.REQUIRED_VANILLA_GRADLE_VERSION + ", current is " + vanillaGradleVersion + ".");
+                    } else {
+                        validatedVanillaGradleVersion = true;
+                        return;
+                    }
+                }
+            }
+            throw new IllegalStateException("This plugin requires loom, add it to the current project un-applied.");
         }
     }
 }

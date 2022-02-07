@@ -42,9 +42,11 @@ public final class TemplateProject {
 
     public Optional<Project> getCommonProject() {
         if (commonProject == null) {
-            if (project.hasProperty("template.commonProject")) {
+            if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
                 //noinspection ConstantConditions Maybe we should throw an exception here, invalid gradle configuration.
-                commonProject = Optional.ofNullable(project.getParent().getChildProjects().get(this.<String>property("template.commonProject")));
+                commonProject = Optional.ofNullable(project.getParent().getChildProjects().get(this.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY)));
+            } else {
+                commonProject = Optional.empty();
             }
         }
         return commonProject;

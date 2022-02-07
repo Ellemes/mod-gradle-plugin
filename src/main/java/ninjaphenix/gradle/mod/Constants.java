@@ -8,9 +8,11 @@ public final class Constants {
     public static final String MINECRAFT_VERSION = "1.18.1";
 
     public static final String REQUIRED_GRADLE_VERSION = "7.4-rc-2";
+    public static final String REQUIRED_VANILLA_GRADLE_VERSION = "0.2.1-SNAPSHOT";
     public static final String REQUIRED_LOOM_VERSION = "0.11.29";
 
     public static final String TEMPLATE_PLATFORM_KEY = "template.platform";
+    public static final String TEMPLATE_COMMON_PROJECT_KEY = "template.commonProject";
 
     private Constants() {
         throw new IllegalStateException("Should not instantiate utility class.");
