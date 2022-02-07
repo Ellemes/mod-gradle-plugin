@@ -9,6 +9,7 @@ public final class TemplateProject {
     private Boolean producesReleaseArtifact;
     private Boolean usesDataGen, usesMixins, usesAccessTransformers;
     private Platform platform;
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     private Optional<Project> commonProject;
 
     public TemplateProject(Project project) {
@@ -33,6 +34,7 @@ public final class TemplateProject {
         return usesDataGen;
     }
 
+    // Forge only
     public boolean usesMixins() {
         if (usesMixins == null) {
             usesMixins = project.hasProperty("template.usesMixins");
@@ -40,6 +42,7 @@ public final class TemplateProject {
         return usesMixins;
     }
 
+    // Forge only.
     public boolean usesAccessTransformers() {
         if (usesAccessTransformers == null) {
             usesAccessTransformers = project.hasProperty("template.usesAccessTransformers");
@@ -55,9 +58,13 @@ public final class TemplateProject {
     }
 
     public Optional<Project> getCommonProject() {
+        //noinspection OptionalAssignedToNull
         if (commonProject == null) {
             if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
-                //noinspection ConstantConditions Maybe we should throw an exception here, invalid gradle configuration.
+                // Read bottom up :)
+                // Also, why do I refer to myself as we...
+                // Does this hold up for a child project as the mod root?
+                // noinspection ConstantConditions Maybe we should throw an exception here, invalid gradle user configuration.
                 commonProject = Optional.ofNullable(project.getParent().getChildProjects().get(this.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY)));
             } else {
                 commonProject = Optional.empty();

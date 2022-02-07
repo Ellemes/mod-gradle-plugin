@@ -10,7 +10,7 @@ public enum Platform {
             case "common" -> Platform.COMMON;
             case "fabric" -> Platform.FABRIC;
             case "forge" -> Platform.FORGE;
-            default -> throw new IllegalStateException("Unexpected value: " + name);
+            default -> throw new IllegalStateException("Unexpected mod platform: " + name);
         };
     }
 }
