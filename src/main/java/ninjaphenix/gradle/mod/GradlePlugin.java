@@ -1,6 +1,7 @@
 package ninjaphenix.gradle.mod;
 
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
+import net.minecraftforge.gradle.common.util.MojangLicenseHelper;
 import net.minecraftforge.gradle.userdev.UserDevExtension;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -185,6 +186,11 @@ public final class GradlePlugin implements Plugin<Project> {
         this.validateForgeGradleVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "net.minecraftforge.gradle"));
+        try {
+            MojangLicenseHelper.hide(project, "official", Constants.MINECRAFT_VERSION);
+        } catch (Exception e) {
+            project.getLogger().warn("Cannot run hide official license warning.");
+        }
         SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
         if (templateProject.usesMixins()) {
             this.validateMixinGradleVersionIfNeeded(target);
