@@ -187,7 +187,7 @@ public final class GradlePlugin implements Plugin<Project> {
         this.validateForgeGradleVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "net.minecraftforge.gradle"));
-        project.getGradle().getStartParameter().getTaskRequests().add(0, new DefaultTaskExecutionRequest(List.of(MojangLicenseHelper.HIDE_LICENSE)));
+        project.getGradle().getStartParameter().getTaskRequests().add(0, new DefaultTaskExecutionRequest(List.of(":" + project.getName() + ":" + MojangLicenseHelper.HIDE_LICENSE)));
         SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
         if (templateProject.usesMixins()) {
             this.validateMixinGradleVersionIfNeeded(target);
