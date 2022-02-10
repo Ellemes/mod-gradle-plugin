@@ -13,6 +13,7 @@ import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.gradle.plugins.MixinExtension;
@@ -186,11 +187,7 @@ public final class GradlePlugin implements Plugin<Project> {
         this.validateForgeGradleVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "net.minecraftforge.gradle"));
-        try {
-            MojangLicenseHelper.hide(project, "official", Constants.MINECRAFT_VERSION);
-        } catch (Exception e) {
-            project.getLogger().warn("Cannot run hide official license warning.");
-        }
+        project.getGradle().getStartParameter().getTaskRequests().add(0, new DefaultTaskExecutionRequest(List.of(MojangLicenseHelper.HIDE_LICENSE)));
         SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
         if (templateProject.usesMixins()) {
             this.validateMixinGradleVersionIfNeeded(target);
