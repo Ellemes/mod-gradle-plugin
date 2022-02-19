@@ -3,6 +3,8 @@ package ninjaphenix.gradle.mod;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.minecraftforge.gradle.common.util.MojangLicenseHelper;
 import net.minecraftforge.gradle.userdev.UserDevExtension;
+import ninjaphenix.gradle.mod.ext.ModGradleExtension;
+import ninjaphenix.gradle.mod.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -39,6 +41,8 @@ public final class GradlePlugin implements Plugin<Project> {
 
         Task buildTask = target.task("buildMod");
 
+        target.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl());
+
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
                 TemplateProject templateProject = new TemplateProject(project);
@@ -54,8 +58,15 @@ public final class GradlePlugin implements Plugin<Project> {
                 });
 
                 project.getRepositories().maven(repo -> {
+                    repo.setName("Unofficial CurseForge Maven");
                     repo.setUrl("https://cursemaven.com");
                     repo.content(descriptor -> descriptor.includeGroup("curse.maven"));
+                });
+
+                project.getRepositories().maven(repo -> {
+                    repo.setName("Modrinth Maven");
+                    repo.setUrl("https://api.modrinth.com/maven");
+                    repo.content(descriptor -> descriptor.includeGroup("maven.modrinth"));
                 });
 
                 project.getTasks().withType(JavaCompile.class).configureEach(task -> task.getOptions().setEncoding("UTF-8"));
