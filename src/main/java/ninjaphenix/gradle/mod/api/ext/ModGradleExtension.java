@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod.ext;
+package ninjaphenix.gradle.mod.api.ext;
 
 import org.gradle.api.JavaVersion;
 

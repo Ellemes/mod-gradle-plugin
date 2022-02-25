@@ -1,6 +1,7 @@
-package ninjaphenix.gradle.mod.ext;
+package ninjaphenix.gradle.mod.impl.ext;
 
-import ninjaphenix.gradle.mod.Constants;
+import ninjaphenix.gradle.mod.impl.Constants;
+import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import org.gradle.api.JavaVersion;
 
 public class ModGradleExtensionImpl implements ModGradleExtension {

@@ -7,14 +7,14 @@ gradlePlugin {
     plugins {
         create("modPlugin") {
             id = "ninjaphenix.gradle.mod"
-            implementationClass = "ninjaphenix.gradle.mod.GradlePlugin"
+            implementationClass = "ninjaphenix.gradle.mod.impl.GradlePlugin"
         }
     }
 }
 
 group = "ninjaphenix"
 base.archivesName.set("mod-gradle-plugin")
-version = "6.1.0.1"
+version = "6.2.0.0"
 
 repositories {
     maven {
@@ -37,5 +37,9 @@ dependencies {
     compileOnly("net.minecraftforge.gradle:ForgeGradle:5.1.26")
     compileOnly("org.spongepowered:mixingradle:0.7-SNAPSHOT")
     implementation("org.jetbrains:annotations:23.0.0")
+
+    listOf("asm-util", "asm-tree", "asm-commons", "asm-analysis", "asm").forEach {
+        implementation("org.ow2.asm:${it}:9.2")
+    }
 }
 

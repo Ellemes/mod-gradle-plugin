@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod;
+package ninjaphenix.gradle.mod.impl;
 
 import org.gradle.api.Project;
 

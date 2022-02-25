@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod;
+package ninjaphenix.gradle.mod.impl;
 
 public enum Platform {
     COMMON,

@@ -1,10 +1,10 @@
-package ninjaphenix.gradle.mod;
+package ninjaphenix.gradle.mod.impl;
 
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.minecraftforge.gradle.common.util.MojangLicenseHelper;
 import net.minecraftforge.gradle.userdev.UserDevExtension;
-import ninjaphenix.gradle.mod.ext.ModGradleExtension;
-import ninjaphenix.gradle.mod.ext.ModGradleExtensionImpl;
+import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
+import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
