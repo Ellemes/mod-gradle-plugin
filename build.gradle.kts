@@ -14,7 +14,7 @@ gradlePlugin {
 
 group = "ninjaphenix"
 base.archivesName.set("mod-gradle-plugin")
-version = "0.0.14"
+version = "0.0.15"
 
 repositories {
     maven {
