@@ -13,6 +13,7 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.DefaultTaskExecutionRequest;
@@ -77,19 +78,21 @@ public final class GradlePlugin implements Plugin<Project> {
                     buildTask.dependsOn(project.getTasks().getByName("build"));
                 }
 
-               templateProject.getCommonProject().ifPresent(common -> {
-                   //noinspection UnstableApiUsage,CodeBlock2Expr
-                   project.getTasks().withType(ProcessResources.class).configureEach(task -> {
-                       task.from(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getResources());
-                   });
+                templateProject.getCommonProject().ifPresent(common -> {
+                    SourceSet mainSourceSet = common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
+                    //noinspection UnstableApiUsage,CodeBlock2Expr
+                    project.getTasks().withType(ProcessResources.class).configureEach(task -> {
+                        task.from(mainSourceSet.getResources());
+                    });
 
-                   //noinspection CodeBlock2Expr
-                   project.getTasks().withType(JavaCompile.class).configureEach(task -> {
-                       task.source(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").getAllSource());
-                   });
+                    //noinspection CodeBlock2Expr
+                    project.getTasks().withType(JavaCompile.class).configureEach(task -> {
+                        task.source(mainSourceSet.getAllSource());
 
-                   project.getDependencies().add("compileOnly", common);
-               });
+                    });
+
+                    project.getDependencies().add("compileOnly", common);
+                });
 
                 if (templateProject.usesDataGen()) {
                     SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
@@ -213,8 +216,8 @@ public final class GradlePlugin implements Plugin<Project> {
             extension.mappings("official", Constants.MINECRAFT_VERSION);
 
             extension.getRuns().create("client", config -> {
-               config.workingDirectory(target.file("run"));
-               config.getMods().create(templateProject.property("mod_id"), modConfig -> modConfig.source(sourceSets.getByName("main")));
+                config.workingDirectory(target.file("run"));
+                config.getMods().create(templateProject.property("mod_id"), modConfig -> modConfig.source(sourceSets.getByName("main")));
             });
 
             extension.getRuns().create("server", config -> {
@@ -265,7 +268,7 @@ public final class GradlePlugin implements Plugin<Project> {
         List<String> tasks = target.getGradle().getStartParameter().getTaskNames();
         boolean isExecutingWrapperTaskOnly = tasks.size() == 1 && tasks.get(0).equals(":wrapper");
         if (!isCorrectGradleVersion && !isExecutingWrapperTaskOnly) {
-            throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " +  Constants.REQUIRED_GRADLE_VERSION);
+            throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
         }
     }
 
