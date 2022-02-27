@@ -17,6 +17,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.DefaultTaskExecutionRequest;
+import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.gradle.plugins.MixinExtension;
@@ -97,13 +98,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 if (templateProject.usesDataGen()) {
                     SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
                     sourceSets.named("main", sourceSet -> sourceSet.getResources().srcDir("src/main/generated"));
-
-                    sourceSets.create("datagen", sourceSet -> {
-                        sourceSet.getCompileClasspath().plus(sourceSets.getByName("main").getCompileClasspath());
-                        sourceSet.getRuntimeClasspath().plus(sourceSets.getByName("main").getCompileClasspath());
-                        sourceSet.getCompileClasspath().plus(sourceSets.getByName("main").getOutput());
-                        sourceSet.getRuntimeClasspath().plus(sourceSets.getByName("main").getOutput());
-                    });
+                    project.getTasks().getByName("jar", task -> ((Jar) task).exclude("**/datagen"));
                 }
 
                 if (templateProject.getPlatform() == Platform.COMMON) {
@@ -170,11 +165,9 @@ public final class GradlePlugin implements Plugin<Project> {
                     container.create("datagen", settings -> {
                         settings.client();
                         settings.vmArg("-Dfabric-api.datagen");
-                        // todo: needs checking.
                         settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
                         settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
                         settings.runDir("build/fabric-datagen");
-                        settings.source(sourceSets.getByName("datagen"));
                     });
                 }
             });
@@ -230,7 +223,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     config.workingDirectory(target.file("run"));
                     //noinspection CodeBlock2Expr
                     config.getMods().create(templateProject.property("mod_id"), modConfig -> {
-                        modConfig.sources(sourceSets.getByName("main"), sourceSets.getByName("datagen"));
+                        modConfig.source(sourceSets.getByName("main"));
                     });
                     List<String> args = new ArrayList<>(List.of("--mod", templateProject.property("mod_id"), "--all",
                             "--output", project.file("src/main/generated").getPath(),
