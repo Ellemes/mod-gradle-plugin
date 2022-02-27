@@ -225,12 +225,12 @@ public final class GradlePlugin implements Plugin<Project> {
                     config.getMods().create(templateProject.property("mod_id"), modConfig -> {
                         modConfig.source(sourceSets.getByName("main"));
                     });
-                    List<String> args = new ArrayList<>(List.of("--mod", templateProject.property("mod_id"), "--all",
-                            "--output", project.file("src/main/generated").getPath(),
-                            "--existing", project.file("src/main/resources").getPath()));
+                    List<Object> args = new ArrayList<>(List.of("--mod", templateProject.property("mod_id"), "--all",
+                            "--output", project.file("src/main/generated"),
+                            "--existing", project.file("src/main/resources")));
                     templateProject.getCommonProject().ifPresent(common -> {
                         args.add("--existing");
-                        args.add(common.file("src/main/resources").getPath());
+                        args.add(common.file("src/main/resources"));
                     });
                     config.args(args);
                 });
