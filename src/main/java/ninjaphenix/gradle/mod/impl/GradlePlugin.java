@@ -237,7 +237,7 @@ public final class GradlePlugin implements Plugin<Project> {
             }
 
             if (templateProject.usesAccessTransformers()) {
-                extension.accessTransformer(project.file("src/common/resources/META-INF/accesstransformer.cfg"));
+                extension.accessTransformer(project.file("src/main/resources/META-INF/accesstransformer.cfg"));
             }
         });
 
@@ -257,6 +257,7 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void validateGradleVersion(Project target) {
+        // todo: this check doesn't work
         boolean isCorrectGradleVersion = target.getGradle().getGradleVersion().equals(Constants.REQUIRED_GRADLE_VERSION);
         List<String> tasks = target.getGradle().getStartParameter().getTaskNames();
         boolean isExecutingWrapperTaskOnly = tasks.size() == 1 && tasks.get(0).equals(":wrapper");
