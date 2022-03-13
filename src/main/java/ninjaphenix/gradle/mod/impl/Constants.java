@@ -8,7 +8,8 @@ public final class Constants {
     public static final String MINECRAFT_VERSION = "1.18.2";
 
     public static final String REQUIRED_GRADLE_VERSION = "7.4";
-    public static final String REQUIRED_LOOM_VERSION = "0.11.29";
+    public static final String REQUIRED_FABRIC_LOOM_VERSION = "0.11.29";
+    public static final String REQUIRED_QUILT_LOOM_VERSION = "0.12-SNAPSHOT"; //todo: change when published
     public static final String REQUIRED_FORGE_GRADLE_VERSION = "5.1.26";
     public static final String REQUIRED_MIXIN_GRADLE_VERSION = "0.7-SNAPSHOT";
 

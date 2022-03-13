@@ -33,7 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //  Common project inspired by https://github.com/samolego/MultiLoaderTemplate
 @SuppressWarnings("unused")
 public final class GradlePlugin implements Plugin<Project> {
-    private final AtomicBoolean validatedLoomVersion = new AtomicBoolean(false);
+    private final AtomicBoolean validatedFabricLoomVersion = new AtomicBoolean(false);
+    private final AtomicBoolean validatedQuiltLoomVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedForgeGradleVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedMixinGradleVersion = new AtomicBoolean(false);
 
@@ -105,6 +106,8 @@ public final class GradlePlugin implements Plugin<Project> {
                     this.applyCommon(templateProject, target);
                 } else if (templateProject.getPlatform() == Platform.FABRIC) {
                     this.applyFabric(templateProject, target);
+                } else if (templateProject.getPlatform() == Platform.QUILT) {
+                    this.applyQuilt(templateProject, target);
                 } else if (templateProject.getPlatform() == Platform.FORGE) {
                     this.applyForge(templateProject, target);
                 }
@@ -113,7 +116,7 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void applyCommon(TemplateProject templateProject, Project target) {
-        this.validateLoomVersionIfNeeded(target);
+        this.validateFabricLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "fabric-loom"));
 
@@ -141,7 +144,7 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void applyFabric(TemplateProject templateProject, Project target) {
-        this.validateLoomVersionIfNeeded(target);
+        this.validateFabricLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "fabric-loom"));
         SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
@@ -186,6 +189,59 @@ public final class GradlePlugin implements Plugin<Project> {
             props.put("version", templateProject.property("mod_version"));
             task.getInputs().properties(props);
             task.filesMatching("fabric.mod.json", details -> details.expand(props));
+            task.exclude(".cache/*");
+        });
+    }
+
+    private void applyQuilt(TemplateProject templateProject, Project target) {
+        this.validateQuiltLoomVersionIfNeeded(target);
+        Project project = templateProject.getProject();
+        project.apply(Map.of("plugin", "org.quiltmc.loom"));
+        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+
+        DependencyHandler dependencies = project.getDependencies();
+        dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
+        dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
+        dependencies.add("modImplementation", "org.quiltmc:quilt-loader:" + templateProject.property("quilt_loader_version"));
+        if (project.hasProperty("qsl_version")) {
+            dependencies.add("modImplementation", "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version"));
+        }
+        if (project.hasProperty("fabric_api_version")) {
+            dependencies.add("modImplementation", "org.quiltmc.fabric_api_qsl:fabric-api:" + templateProject.property("fabric_api_version"));
+        }
+
+        project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
+            extension.runs(container -> {
+                container.named("client", settings -> settings.ideConfigGenerated(false));
+                container.named("server", settings -> {
+                    settings.ideConfigGenerated(false);
+                    settings.serverWithGui();
+                });
+                if (templateProject.usesDataGen()) {
+                    container.create("datagen", settings -> {
+                        settings.client();
+                        settings.vmArg("-Dfabric-api.datagen");
+                        settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
+                        settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
+                        settings.runDir("build/quilt-datagen");
+                    });
+                }
+            });
+
+            //noinspection UnstableApiUsage
+            extension.getMixin().getUseLegacyMixinAp().set(false);
+
+            if (project.hasProperty("access_widener_path")) {
+                extension.getAccessWidenerPath().set(project.file(templateProject.property("access_widener_path")));
+            }
+        });
+
+        //noinspection UnstableApiUsage
+        project.getTasks().withType(ProcessResources.class).configureEach(task -> {
+            HashMap<String, String> props = new HashMap<>();
+            props.put("version", templateProject.property("mod_version"));
+            task.getInputs().properties(props);
+            task.filesMatching("quilt.mod.json", details -> details.expand(props));
             task.exclude(".cache/*");
         });
     }
@@ -266,8 +322,13 @@ public final class GradlePlugin implements Plugin<Project> {
         }
     }
 
-    private void validateLoomVersionIfNeeded(Project target) {
-        this.validatePluginVersionIfNeeded(target, validatedLoomVersion, "net.fabricmc", "fabric-loom", Constants.REQUIRED_LOOM_VERSION, "loom");
+    private void validateFabricLoomVersionIfNeeded(Project target) {
+        this.validatePluginVersionIfNeeded(target, validatedFabricLoomVersion, "net.fabricmc", "fabric-loom", Constants.REQUIRED_FABRIC_LOOM_VERSION, "fabric loom");
+    }
+
+    private void validateQuiltLoomVersionIfNeeded(Project target) {
+        // todo: change plugin group / name if needed
+        this.validatePluginVersionIfNeeded(target, validatedFabricLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
     }
 
     private void validateForgeGradleVersionIfNeeded(Project target) {
