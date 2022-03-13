@@ -2,18 +2,22 @@ package ninjaphenix.gradle.mod.impl;
 
 import org.gradle.api.Project;
 
-import java.util.Optional;
+import java.util.function.Consumer;
 
 public final class TemplateProject {
     private final Project project;
     private Boolean producesReleaseArtifact;
     private Boolean usesDataGen, usesMixins, usesAccessTransformers;
     private Platform platform;
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private Optional<Project> commonProject;
+    private final Project commonProject;
 
     public TemplateProject(Project project) {
         this.project = project;
+        if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
+            this.commonProject = project.getParent().getChildProjects().get(this.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY));
+        } else {
+            this.commonProject = null;
+        }
     }
 
     public Project getProject() {
@@ -57,20 +61,10 @@ public final class TemplateProject {
         return platform;
     }
 
-    public Optional<Project> getCommonProject() {
-        //noinspection OptionalAssignedToNull
-        if (commonProject == null) {
-            if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
-                // Read bottom up :)
-                // Also, why do I refer to myself as we...
-                // Does this hold up for a child project as the mod root?
-                // noinspection ConstantConditions Maybe we should throw an exception here, invalid gradle user configuration.
-                commonProject = Optional.ofNullable(project.getParent().getChildProjects().get(this.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY)));
-            } else {
-                commonProject = Optional.empty();
-            }
+    public void ifCommonProjectPresent(Consumer<Project> consumer) {
+        if (commonProject != null) {
+            consumer.accept(commonProject);
         }
-        return commonProject;
     }
 
     public <T> T property(String name) {

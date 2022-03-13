@@ -80,7 +80,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     buildTask.dependsOn(project.getTasks().getByName("build"));
                 }
 
-                templateProject.getCommonProject().ifPresent(common -> {
+                templateProject.ifCommonProjectPresent(common -> {
                     SourceSet mainSourceSet = common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
                     //noinspection UnstableApiUsage,CodeBlock2Expr
                     project.getTasks().withType(ProcessResources.class).configureEach(task -> {
@@ -284,7 +284,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     List<Object> args = new ArrayList<>(List.of("--mod", templateProject.property("mod_id"), "--all",
                             "--output", project.file("src/main/generated"),
                             "--existing", project.file("src/main/resources")));
-                    templateProject.getCommonProject().ifPresent(common -> {
+                    templateProject.ifCommonProjectPresent(common -> {
                         args.add("--existing");
                         args.add(common.file("src/main/resources"));
                     });
