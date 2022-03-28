@@ -3,7 +3,8 @@ plugins {
     `maven-publish`
 }
 
-gradlePlugin {
+// idk intellij is being funky with buildscripts
+project.extensions.getByType(GradlePluginDevelopmentExtension::class).apply {
     plugins {
         create("modPlugin") {
             id = "ninjaphenix.gradle.mod"
@@ -13,33 +14,26 @@ gradlePlugin {
 }
 
 group = "ninjaphenix"
-base.archivesName.set("mod-gradle-plugin")
-version = "6.2.0.7"
+project.extensions.getByType(BasePluginExtension::class).apply {
+    archivesName.set("mod-gradle-plugin")
+}
+version = "6.2.1.1"
 
 repositories {
     maven {
-        name = "FabricMC"
-        url = uri("https://maven.fabricmc.net")
-    }
-    maven {
-        name = "SpongePowered"
-        url = uri("https://repo.spongepowered.org/repository/maven-public/")
-    }
-    maven {
-        name = "MinecraftForge"
-        url = uri("https://maven.minecraftforge.net/")
+        name = "Architectury Maven"
+        url = uri("https://maven.architectury.dev")
     }
     mavenCentral()
 }
 
 dependencies {
-    compileOnly("net.fabricmc:fabric-loom:0.11.29")
-    compileOnly("net.minecraftforge.gradle:ForgeGradle:5.1.26")
-    compileOnly("org.spongepowered:mixingradle:0.7-SNAPSHOT")
-    implementation("org.jetbrains:annotations:23.0.0")
+    "compileOnly"("dev.architectury:architectury-loom:0.11.0-SNAPSHOT")
+    "compileOnly"("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
+    "implementation"("org.jetbrains:annotations:23.0.0")
 
     listOf("asm-util", "asm-tree", "asm-commons", "asm-analysis", "asm").forEach {
-        implementation("org.ow2.asm:${it}:9.2")
+        "implementation"("org.ow2.asm:${it}:9.2")
     }
 }
 

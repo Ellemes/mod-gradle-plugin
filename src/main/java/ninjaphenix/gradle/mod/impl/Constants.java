@@ -8,10 +8,9 @@ public final class Constants {
     public static final String MINECRAFT_VERSION = "1.18.2";
 
     public static final String REQUIRED_GRADLE_VERSION = "7.4";
-    public static final String REQUIRED_FABRIC_LOOM_VERSION = "0.11.29";
+    public static final String REQUIRED_ARCH_LOOM_VERSION = "0.11.0-SNAPSHOT";
+    public static final String REQUIRED_ARCH_PLUGIN_VERSION = "3.4-SNAPSHOT";
     public static final String REQUIRED_QUILT_LOOM_VERSION = "0.12-SNAPSHOT"; //todo: change when published
-    public static final String REQUIRED_FORGE_GRADLE_VERSION = "5.1.26";
-    public static final String REQUIRED_MIXIN_GRADLE_VERSION = "0.7-SNAPSHOT";
 
     public static final String TEMPLATE_PLATFORM_KEY = "template.platform";
     public static final String TEMPLATE_COMMON_PROJECT_KEY = "template.commonProject";

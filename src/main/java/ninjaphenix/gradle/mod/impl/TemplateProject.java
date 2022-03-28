@@ -71,4 +71,9 @@ public final class TemplateProject {
         //noinspection unchecked
         return (T) project.property(name);
     }
+
+    public <T> T rootProperty(String name) {
+        //noinspection unchecked
+        return (T) project.getRootProject().property(name);
+    }
 }

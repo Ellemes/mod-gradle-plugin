@@ -1,9 +1,8 @@
 package ninjaphenix.gradle.mod.impl;
 
+import dev.architectury.plugin.ArchitectPluginExtension;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.fabricmc.loom.configuration.FabricApiExtension;
-import net.minecraftforge.gradle.common.util.MojangLicenseHelper;
-import net.minecraftforge.gradle.userdev.UserDevExtension;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
@@ -14,16 +13,13 @@ import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
-import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
-import org.spongepowered.asm.gradle.plugins.MixinExtension;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,15 +30,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //  Common project inspired by https://github.com/samolego/MultiLoaderTemplate
 @SuppressWarnings("unused")
 public final class GradlePlugin implements Plugin<Project> {
-    private final AtomicBoolean validatedFabricLoomVersion = new AtomicBoolean(false);
+    private final AtomicBoolean validatedArchLoomVersion = new AtomicBoolean(false);
+    private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedQuiltLoomVersion = new AtomicBoolean(false);
-    private final AtomicBoolean validatedForgeGradleVersion = new AtomicBoolean(false);
-    private final AtomicBoolean validatedMixinGradleVersion = new AtomicBoolean(false);
 
     @Override
     public void apply(@NotNull Project target) {
         this.validateGradleVersion(target);
-
+        this.validateArchPluginVersion(target);
+        target.apply(Map.of("plugin", "architectury-plugin"));
+        target.getExtensions().configure(ArchitectPluginExtension.class, extension -> {
+            extension.setMinecraft(Constants.MINECRAFT_VERSION);
+        });
         Task buildTask = target.task("buildMod");
 
         target.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl());
@@ -61,6 +60,12 @@ public final class GradlePlugin implements Plugin<Project> {
                     extension.setTargetCompatibility(Constants.JAVA_VERSION);
                 });
 
+                project.getTasks().withType(JavaCompile.class).configureEach(task -> {
+                    CompileOptions options = task.getOptions();
+                    options.setEncoding("UTF-8");
+                    options.getRelease().set(Constants.JAVA_VERSION.ordinal() + 1);
+                });
+
                 project.getRepositories().maven(repo -> {
                     repo.setName("Unofficial CurseForge Maven");
                     repo.setUrl("https://cursemaven.com");
@@ -73,29 +78,13 @@ public final class GradlePlugin implements Plugin<Project> {
                     repo.content(descriptor -> descriptor.includeGroup("maven.modrinth"));
                 });
 
-                project.getTasks().withType(JavaCompile.class).configureEach(task -> task.getOptions().setEncoding("UTF-8"));
+                project.getRepositories().mavenLocal();
 
                 project.getDependencies().add("implementation", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
 
                 if (templateProject.producesReleaseArtifact()) {
                     buildTask.dependsOn(project.getTasks().getByName("build"));
                 }
-
-                templateProject.ifCommonProjectPresent(common -> {
-                    SourceSet mainSourceSet = common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
-                    //noinspection UnstableApiUsage,CodeBlock2Expr
-                    project.getTasks().withType(ProcessResources.class).configureEach(task -> {
-                        task.from(mainSourceSet.getResources());
-                    });
-
-                    //noinspection CodeBlock2Expr
-                    project.getTasks().withType(JavaCompile.class).configureEach(task -> {
-                        task.source(mainSourceSet.getAllSource());
-
-                    });
-
-                    project.getDependencies().add("compileOnly", common);
-                });
 
                 if (templateProject.usesDataGen()) {
                     SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
@@ -114,17 +103,23 @@ public final class GradlePlugin implements Plugin<Project> {
                 }
             }
         });
+
+        target.subprojects(project -> {
+            if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
+                TemplateProject templateProject = new TemplateProject(project);
+                if (templateProject.getPlatform() != Platform.QUILT) {
+                    this.applyArchPlugin(project, templateProject.getPlatform());
+                }
+            }
+        });
     }
 
     private void applyCommon(TemplateProject templateProject, Project target) {
-        this.validateFabricLoomVersionIfNeeded(target);
+        this.validateArchLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
-        project.apply(Map.of("plugin", "fabric-loom"));
-
+        this.applyArchLoom(project);
         DependencyHandler dependencies = project.getDependencies();
-        dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
-        dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
-        dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
+        dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.rootProperty("fabric_loader_version"));
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {
@@ -135,24 +130,43 @@ public final class GradlePlugin implements Plugin<Project> {
                 });
             });
 
-            //noinspection UnstableApiUsage
-            extension.getMixin().getUseLegacyMixinAp().set(false);
-
             if (project.hasProperty("access_widener_path")) {
                 extension.getAccessWidenerPath().set(project.file(templateProject.property("access_widener_path")));
             }
         });
     }
 
-    private void applyFabric(TemplateProject templateProject, Project target) {
-        this.validateFabricLoomVersionIfNeeded(target);
-        Project project = templateProject.getProject();
-        project.apply(Map.of("plugin", "fabric-loom"));
-        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+    private void applyArchLoom(Project project) {
+        project.apply(Map.of("plugin", "dev.architectury.loom"));
+        LoomGradleExtensionAPI loomPlugin = project.getExtensions().getByType(LoomGradleExtensionAPI.class);
+        loomPlugin.silentMojangMappingsLicense();
 
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
-        dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
+        dependencies.add("mappings", loomPlugin.officialMojangMappings());
+    }
+
+    private void applyArchPlugin(Project project, Platform platform) {
+        project.apply(Map.of("plugin", "architectury-plugin"));
+        var architecturyPlugin = project.getExtensions().getByType(ArchitectPluginExtension.class);
+        switch (platform) {
+            case COMMON -> {
+                architecturyPlugin.common();
+                architecturyPlugin.setInjectInjectables(false);
+            }
+            case FABRIC -> architecturyPlugin.fabric();
+            case FORGE -> architecturyPlugin.forge();
+        }
+    }
+
+    private void applyFabric(TemplateProject templateProject, Project target) {
+        this.validateArchLoomVersionIfNeeded(target);
+        Project project = templateProject.getProject();
+        project.getExtensions().getExtraProperties().set("loom.platform", "fabric");
+        this.applyArchLoom(project);
+        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+
+        DependencyHandler dependencies = project.getDependencies();
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
         if (project.hasProperty("fabric_api_version") && project.hasProperty("fabric_api_modules")) {
             String modules = templateProject.property("fabric_api_modules");
@@ -184,13 +198,6 @@ public final class GradlePlugin implements Plugin<Project> {
                     });
                 }
             });
-
-            //noinspection UnstableApiUsage
-            extension.getMixin().getUseLegacyMixinAp().set(false);
-
-            if (project.hasProperty("access_widener_path")) {
-                extension.getAccessWidenerPath().set(project.file(templateProject.property("access_widener_path")));
-            }
         });
 
         //noinspection UnstableApiUsage
@@ -257,61 +264,13 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void applyForge(TemplateProject templateProject, Project target) {
-        this.validateForgeGradleVersionIfNeeded(target);
+        this.validateArchLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
-        project.apply(Map.of("plugin", "net.minecraftforge.gradle"));
-        project.getGradle().getStartParameter().getTaskRequests().add(0, new DefaultTaskExecutionRequest(List.of(":" + project.getName() + ":" + MojangLicenseHelper.HIDE_LICENSE)));
+        project.getExtensions().getExtraProperties().set("loom.platform", "forge");
+        this.applyArchLoom(project);
         SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
-        if (templateProject.usesMixins()) {
-            this.validateMixinGradleVersionIfNeeded(target);
-            project.apply(Map.of("plugin", "org.spongepowered.mixin"));
-            project.getExtensions().configure(MixinExtension.class, extension -> {
-                extension.add(sourceSets.getByName("main"), templateProject.property("mod_id") + ".refmap.json");
-                extension.disableAnnotationProcessorCheck();
-            });
-        }
 
-        project.getExtensions().configure(UserDevExtension.class, extension -> {
-            extension.mappings("official", Constants.MINECRAFT_VERSION);
-
-            extension.getRuns().create("client", config -> {
-                config.workingDirectory(target.file("run"));
-                config.getMods().create(templateProject.property("mod_id"), modConfig -> modConfig.source(sourceSets.getByName("main")));
-            });
-
-            extension.getRuns().create("server", config -> {
-                config.workingDirectory(target.file("run"));
-                config.getMods().create(templateProject.property("mod_id"), modConfig -> modConfig.source(sourceSets.getByName("main")));
-            });
-
-            if (templateProject.usesDataGen()) {
-                extension.getRuns().create("data", config -> {
-                    config.workingDirectory(target.file("run"));
-                    //noinspection CodeBlock2Expr
-                    config.getMods().create(templateProject.property("mod_id"), modConfig -> {
-                        modConfig.source(sourceSets.getByName("main"));
-                    });
-                    List<Object> args = new ArrayList<>(List.of("--mod", templateProject.property("mod_id"), "--all",
-                            "--output", project.file("src/main/generated"),
-                            "--existing", project.file("src/main/resources")));
-                    templateProject.ifCommonProjectPresent(common -> {
-                        args.add("--existing");
-                        args.add(common.file("src/main/resources"));
-                    });
-                    config.args(args);
-                });
-            }
-
-            if (templateProject.usesAccessTransformers()) {
-                extension.accessTransformer(project.file("src/main/resources/META-INF/accesstransformer.cfg"));
-            }
-        });
-
-        project.getDependencies().add("minecraft", "net.minecraftforge:forge:" + Constants.MINECRAFT_VERSION + "-" + templateProject.property("forge_version"));
-        if (templateProject.usesMixins()) {
-            project.getDependencies().add("implementation", "org.spongepowered:mixin:" + templateProject.property("mixin_version"));
-            project.getDependencies().add("annotationProcessor", "org.spongepowered:mixin:" + templateProject.property("mixin_version") + ":processor");
-        }
+        project.getDependencies().add("forge", "net.minecraftforge:forge:" + Constants.MINECRAFT_VERSION + "-" + templateProject.property("forge_version"));
         //noinspection UnstableApiUsage
         project.getTasks().withType(ProcessResources.class).configureEach(task -> {
             HashMap<String, String> props = new HashMap<>();
@@ -328,25 +287,23 @@ public final class GradlePlugin implements Plugin<Project> {
         List<String> tasks = target.getGradle().getStartParameter().getTaskNames();
         boolean isExecutingWrapperTaskOnly = tasks.size() == 1 && tasks.get(0).equals(":wrapper");
         if (!isCorrectGradleVersion && !isExecutingWrapperTaskOnly) {
-            throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
+            // todo: throw error when check is fixed.
+            target.getLogger().error("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
+            //throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
         }
     }
 
-    private void validateFabricLoomVersionIfNeeded(Project target) {
-        this.validatePluginVersionIfNeeded(target, validatedFabricLoomVersion, "net.fabricmc", "fabric-loom", Constants.REQUIRED_FABRIC_LOOM_VERSION, "fabric loom");
+    private void validateArchPluginVersion(Project target) {
+        this.validatePluginVersionIfNeeded(target, validatedArchPluginVersion, "architectury-plugin", "architectury-plugin.gradle.plugin", Constants.REQUIRED_ARCH_PLUGIN_VERSION, "arch plugin");
+    }
+
+    private void validateArchLoomVersionIfNeeded(Project target) {
+        this.validatePluginVersionIfNeeded(target, validatedArchLoomVersion, "dev.architectury", "architectury-loom", Constants.REQUIRED_ARCH_LOOM_VERSION, "arch loom");
     }
 
     private void validateQuiltLoomVersionIfNeeded(Project target) {
         // todo: change plugin group / name if needed
-        this.validatePluginVersionIfNeeded(target, validatedFabricLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
-    }
-
-    private void validateForgeGradleVersionIfNeeded(Project target) {
-        this.validatePluginVersionIfNeeded(target, validatedForgeGradleVersion, "net.minecraftforge.gradle", "ForgeGradle", Constants.REQUIRED_FORGE_GRADLE_VERSION, "forge gradle");
-    }
-
-    private void validateMixinGradleVersionIfNeeded(Project target) {
-        this.validatePluginVersionIfNeeded(target, validatedMixinGradleVersion, "org.spongepowered", "mixingradle", Constants.REQUIRED_MIXIN_GRADLE_VERSION, "mixin gradle");
+        this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
     }
 
     private void validatePluginVersionIfNeeded(Project target, AtomicBoolean checked, String group, String name, String requiredVersion, String friendlyName) {
@@ -355,9 +312,9 @@ public final class GradlePlugin implements Plugin<Project> {
             for (ResolvedArtifact artifact : artifacts) {
                 ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
                 if (identifier.getGroup().equals(group) && identifier.getName().equals(name)) {
-                    String mixinGradleVersion = identifier.getVersion();
-                    if (!mixinGradleVersion.equals(requiredVersion)) {
-                        throw new IllegalStateException("This plugin requires " + friendlyName + requiredVersion + ", current is " + mixinGradleVersion + ".");
+                    String pluginVersion = identifier.getVersion();
+                    if (!pluginVersion.equals(requiredVersion)) {
+                        throw new IllegalStateException("This plugin requires " + friendlyName + requiredVersion + ", current is " + pluginVersion + ".");
                     } else {
                         checked.set(true);
                         return;
