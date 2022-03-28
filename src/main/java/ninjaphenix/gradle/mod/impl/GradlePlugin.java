@@ -244,13 +244,6 @@ public final class GradlePlugin implements Plugin<Project> {
                     });
                 }
             });
-
-            //noinspection UnstableApiUsage
-            extension.getMixin().getUseLegacyMixinAp().set(false);
-
-            if (project.hasProperty("access_widener_path")) {
-                extension.getAccessWidenerPath().set(project.file(templateProject.property("access_widener_path")));
-            }
         });
 
         //noinspection UnstableApiUsage
@@ -302,7 +295,6 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void validateQuiltLoomVersionIfNeeded(Project target) {
-        // todo: change plugin group / name if needed
         this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
     }
 
