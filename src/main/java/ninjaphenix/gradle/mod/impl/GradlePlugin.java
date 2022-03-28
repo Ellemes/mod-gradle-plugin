@@ -1,6 +1,7 @@
 package ninjaphenix.gradle.mod.impl;
 
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
+import net.fabricmc.loom.configuration.FabricApiExtension;
 import net.minecraftforge.gradle.common.util.MojangLicenseHelper;
 import net.minecraftforge.gradle.userdev.UserDevExtension;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
@@ -153,8 +154,17 @@ public final class GradlePlugin implements Plugin<Project> {
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
         dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
-        if (project.hasProperty("fabric_api_version")) {
-            dependencies.add("modImplementation", "net.fabricmc.fabric-api:fabric-api:" + templateProject.property("fabric_api_version"));
+        if (project.hasProperty("fabric_api_version") && project.hasProperty("fabric_api_modules")) {
+            String modules = templateProject.property("fabric_api_modules");
+            String fabricApiVersion = templateProject.property("fabric_api_version");
+            if (modules.equals("all")) {
+                dependencies.add("modImplementation", "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion);
+            } else {
+                var fabricApiExtension = project.getExtensions().getByType(FabricApiExtension.class);
+                for (String module : modules.split(",")) {
+                    dependencies.add("modImplementation", fabricApiExtension.module(module, fabricApiVersion));
+                }
+            }
         }
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
