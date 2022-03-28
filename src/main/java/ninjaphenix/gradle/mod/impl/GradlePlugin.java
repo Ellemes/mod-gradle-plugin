@@ -107,9 +107,7 @@ public final class GradlePlugin implements Plugin<Project> {
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
                 TemplateProject templateProject = new TemplateProject(project);
-                if (templateProject.getPlatform() != Platform.QUILT) {
-                    this.applyArchPlugin(project, templateProject.getPlatform());
-                }
+                this.applyArchPlugin(project, templateProject.getPlatform());
             }
         });
     }
@@ -154,7 +152,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 architecturyPlugin.common();
                 architecturyPlugin.setInjectInjectables(false);
             }
-            case FABRIC -> architecturyPlugin.fabric();
+            case FABRIC, QUILT -> architecturyPlugin.fabric();
             case FORGE -> architecturyPlugin.forge();
         }
     }
@@ -220,12 +218,12 @@ public final class GradlePlugin implements Plugin<Project> {
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
         dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "org.quiltmc:quilt-loader:" + templateProject.property("quilt_loader_version"));
-        if (project.hasProperty("qsl_version")) {
-            dependencies.add("modImplementation", "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version"));
-        }
-        if (project.hasProperty("fabric_api_version")) {
-            dependencies.add("modImplementation", "org.quiltmc.fabric_api_qsl:fabric-api:" + templateProject.property("fabric_api_version"));
-        }
+        //if (project.hasProperty("qsl_version")) {
+        //    dependencies.add("modImplementation", "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version"));
+        //}
+        //if (project.hasProperty("fabric_api_version")) {
+        //    dependencies.add("modImplementation", "org.quiltmc.fabric_api_qsl:fabric-api:" + templateProject.property("fabric_api_version"));
+        //}
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {
@@ -295,7 +293,12 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void validateQuiltLoomVersionIfNeeded(Project target) {
-        this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
+        //Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
+        //for (ResolvedArtifact artifact : artifacts) {
+        //    ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
+        //    target.getLogger().error(identifier.getGroup() + ":" + identifier.getName() + ":" + identifier.getVersion());
+        //}
+        this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "quilt-loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
     }
 
     private void validatePluginVersionIfNeeded(Project target, AtomicBoolean checked, String group, String name, String requiredVersion, String friendlyName) {
