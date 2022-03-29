@@ -2,6 +2,7 @@ package ninjaphenix.gradle.mod.impl;
 
 import dev.architectury.plugin.ArchitectPluginExtension;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
+import net.fabricmc.loom.configuration.FabricApiExtension;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
@@ -38,12 +39,11 @@ public final class GradlePlugin implements Plugin<Project> {
         this.validateGradleVersion(target);
         this.validateArchPluginVersion(target);
         target.apply(Map.of("plugin", "architectury-plugin"));
-        target.getExtensions().configure(ArchitectPluginExtension.class, extension -> {
-            extension.setMinecraft(Constants.MINECRAFT_VERSION);
-        });
+        target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(Constants.MINECRAFT_VERSION));
         Task buildTask = target.task("buildMod");
 
-        target.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(target));
+        ModGradleExtension modExtension = new ModGradleExtensionImpl();
+        target.allprojects(project -> project.getExtensions().add(ModGradleExtension.class, "mod", modExtension));
 
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
@@ -161,8 +161,6 @@ public final class GradlePlugin implements Plugin<Project> {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "fabric");
         this.applyArchLoom(project);
-        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
-
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
         if (project.hasProperty("fabric_api_version") && project.hasProperty("fabric_api_modules")) {
@@ -172,7 +170,8 @@ public final class GradlePlugin implements Plugin<Project> {
                 dependencies.add("modImplementation", "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion);
             } else {
                 for (String module : modules.split(",")) {
-                    dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().fabricApiModule(module, fabricApiVersion));
+                    //dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().fabricApiModule(module, fabricApiVersion));
+                    dependencies.add("modImplementation", target.getExtensions().getByType(FabricApiExtension.class).module(module, fabricApiVersion));
                 }
             }
         }
@@ -210,22 +209,22 @@ public final class GradlePlugin implements Plugin<Project> {
         this.validateQuiltLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "org.quiltmc.loom"));
-        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
-
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
         dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "org.quiltmc:quilt-loader:" + templateProject.property("quilt_loader_version"));
         if (project.hasProperty("qsl_version") && project.hasProperty("qsl_modules")) {
-
             String modules = templateProject.property("qsl_modules");
             String qslVersion = templateProject.property("qsl_version");
             if (modules.equals("all")) {
-                //todo: remove dep on fabric loader from org.quiltmc.qsl.core:qsl_base:*
-                dependencies.add("modImplementation", "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version"));
+                dependencies.addProvider("modImplementation", project.provider(() -> "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version")), dep -> {
+                    dep.exclude(Map.of("group", "net.fabricmc"));
+                });
             } else {
                 for (String module : modules.split(",")) {
-                    dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().qslModule(module, qslVersion));
+                    dependencies.addProvider("modImplementation", project.provider(() -> target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().qslModule(module, qslVersion)), dep -> {
+                        dep.exclude(Map.of("group", "net.fabricmc"));
+                    });
                 }
             }
         }
@@ -233,10 +232,14 @@ public final class GradlePlugin implements Plugin<Project> {
             String modules = templateProject.property("fabric_api_modules");
             String fabricApiVersion = templateProject.property("fabric_api_version");
             if (modules.equals("all")) {
-                dependencies.add("modImplementation", "org.quiltmc.fabric_api_qsl:fabric-api:" + fabricApiVersion);
+                dependencies.addProvider("modImplementation", project.provider(() -> "org.quiltmc.fabric_api_qsl:fabric-api:" + fabricApiVersion), dep -> {
+                    dep.exclude(Map.of("group", "net.fabricmc"));
+                });
             } else {
                 for (String module : modules.split(",")) {
-                    dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().quiltedFabricApiModule(module, fabricApiVersion));
+                    dependencies.addProvider("modImplementation", project.provider(() -> target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().quiltedFabricApiModule(module, fabricApiVersion)), dep -> {
+                        dep.exclude(Map.of("group", "net.fabricmc"));
+                    });
                 }
             }
         }
@@ -275,9 +278,27 @@ public final class GradlePlugin implements Plugin<Project> {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "forge");
         this.applyArchLoom(project);
-        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
-
         project.getDependencies().add("forge", "net.minecraftforge:forge:" + Constants.MINECRAFT_VERSION + "-" + templateProject.property("forge_version"));
+
+        project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
+            extension.runs(container -> {
+                container.named("client", settings -> settings.ideConfigGenerated(false));
+                container.named("server", settings -> {
+                    settings.ideConfigGenerated(false);
+                    settings.serverWithGui();
+                });
+                //if (templateProject.usesDataGen()) {
+                //    container.create("datagen", settings -> {
+                //        settings.client();
+                //        settings.vmArg("-Dfabric-api.datagen");
+                //        settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
+                //        settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
+                //        settings.runDir("build/" + project.getName() + "-datagen");
+                //    });
+                //}
+            });
+        });
+
         //noinspection UnstableApiUsage
         project.getTasks().withType(ProcessResources.class).configureEach(task -> {
             HashMap<String, String> props = new HashMap<>();
@@ -289,14 +310,11 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void validateGradleVersion(Project target) {
-        // todo: this check doesn't work
         boolean isCorrectGradleVersion = target.getGradle().getGradleVersion().equals(Constants.REQUIRED_GRADLE_VERSION);
         List<String> tasks = target.getGradle().getStartParameter().getTaskNames();
-        boolean isExecutingWrapperTaskOnly = tasks.size() == 1 && tasks.get(0).equals(":wrapper");
+        boolean isExecutingWrapperTaskOnly = tasks.size() == 3 && tasks.get(0).equals(":wrapper") && tasks.get(1).equals("--gradle-version") && tasks.get(2).equals(Constants.REQUIRED_GRADLE_VERSION);
         if (!isCorrectGradleVersion && !isExecutingWrapperTaskOnly) {
-            // todo: throw error when check is fixed.
-            target.getLogger().error("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
-            //throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
+            throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
         }
     }
 
