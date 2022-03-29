@@ -192,7 +192,7 @@ public final class GradlePlugin implements Plugin<Project> {
                         settings.vmArg("-Dfabric-api.datagen");
                         settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
                         settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
-                        settings.runDir("build/fabric-datagen");
+                        settings.runDir("build/" + project.getName() + "-datagen");
                     });
                 }
             });
@@ -219,6 +219,7 @@ public final class GradlePlugin implements Plugin<Project> {
         dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "org.quiltmc:quilt-loader:" + templateProject.property("quilt_loader_version"));
         //if (project.hasProperty("qsl_version")) {
+        // todo: remove dep on fabric loader from qsl
         //    dependencies.add("modImplementation", "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version"));
         //}
         //if (project.hasProperty("fabric_api_version")) {
@@ -238,7 +239,7 @@ public final class GradlePlugin implements Plugin<Project> {
                         settings.vmArg("-Dfabric-api.datagen");
                         settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
                         settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
-                        settings.runDir("build/quilt-datagen");
+                        settings.runDir("build/" + project.getName() + "-datagen");
                     });
                 }
             });
