@@ -2,7 +2,6 @@ package ninjaphenix.gradle.mod.impl;
 
 import dev.architectury.plugin.ArchitectPluginExtension;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
-import net.fabricmc.loom.configuration.FabricApiExtension;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
@@ -44,7 +43,7 @@ public final class GradlePlugin implements Plugin<Project> {
         });
         Task buildTask = target.task("buildMod");
 
-        target.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl());
+        target.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(target));
 
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
@@ -172,9 +171,8 @@ public final class GradlePlugin implements Plugin<Project> {
             if (modules.equals("all")) {
                 dependencies.add("modImplementation", "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion);
             } else {
-                var fabricApiExtension = project.getExtensions().getByType(FabricApiExtension.class);
                 for (String module : modules.split(",")) {
-                    dependencies.add("modImplementation", fabricApiExtension.module(module, fabricApiVersion));
+                    dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().fabricApiModule(module, fabricApiVersion));
                 }
             }
         }
@@ -218,13 +216,30 @@ public final class GradlePlugin implements Plugin<Project> {
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
         dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "org.quiltmc:quilt-loader:" + templateProject.property("quilt_loader_version"));
-        //if (project.hasProperty("qsl_version")) {
-        // todo: remove dep on fabric loader from qsl
-        //    dependencies.add("modImplementation", "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version"));
-        //}
-        //if (project.hasProperty("fabric_api_version")) {
-        //    dependencies.add("modImplementation", "org.quiltmc.fabric_api_qsl:fabric-api:" + templateProject.property("fabric_api_version"));
-        //}
+        if (project.hasProperty("qsl_version") && project.hasProperty("qsl_modules")) {
+
+            String modules = templateProject.property("qsl_modules");
+            String qslVersion = templateProject.property("qsl_version");
+            if (modules.equals("all")) {
+                //todo: remove dep on fabric loader from org.quiltmc.qsl.core:qsl_base:*
+                dependencies.add("modImplementation", "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version"));
+            } else {
+                for (String module : modules.split(",")) {
+                    dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().qslModule(module, qslVersion));
+                }
+            }
+        }
+        if (project.hasProperty("fabric_api_version") && project.hasProperty("fabric_api_modules")) {
+            String modules = templateProject.property("fabric_api_modules");
+            String fabricApiVersion = templateProject.property("fabric_api_version");
+            if (modules.equals("all")) {
+                dependencies.add("modImplementation", "org.quiltmc.fabric_api_qsl:fabric-api:" + fabricApiVersion);
+            } else {
+                for (String module : modules.split(",")) {
+                    dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().quiltedFabricApiModule(module, fabricApiVersion));
+                }
+            }
+        }
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {
