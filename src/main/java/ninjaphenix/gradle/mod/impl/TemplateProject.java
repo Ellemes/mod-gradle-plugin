@@ -1,25 +1,27 @@
 package ninjaphenix.gradle.mod.impl;
 
 import org.gradle.api.Project;
-
-import java.util.function.Consumer;
+import org.jetbrains.annotations.NotNull;
 
 public final class TemplateProject {
     private final Project project;
+    private final Project rootProject;
     private Boolean producesReleaseArtifact;
-    private Boolean usesDataGen, usesMixins, usesAccessTransformers;
+    private Boolean usesDataGen;
     private Platform platform;
-    private final Project commonProject;
+    //private final Project commonProject;
 
-    public TemplateProject(Project project) {
+    public TemplateProject(Project project, Project rootProject) {
         this.project = project;
-        if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
-            this.commonProject = project.getParent().getChildProjects().get(this.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY));
-        } else {
-            this.commonProject = null;
-        }
+        this.rootProject = rootProject;
+        //if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
+        //    this.commonProject = rootProject.getChildProjects().get(this.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY));
+        //} else {
+        //    this.commonProject = null;
+        //}
     }
 
+    @NotNull
     public Project getProject() {
         return project;
     }
@@ -38,22 +40,7 @@ public final class TemplateProject {
         return usesDataGen;
     }
 
-    // Forge only
-    public boolean usesMixins() {
-        if (usesMixins == null) {
-            usesMixins = project.hasProperty("template.usesMixins");
-        }
-        return usesMixins;
-    }
-
-    // Forge only.
-    public boolean usesAccessTransformers() {
-        if (usesAccessTransformers == null) {
-            usesAccessTransformers = project.hasProperty("template.usesAccessTransformers");
-        }
-        return usesAccessTransformers;
-    }
-
+    @NotNull
     public Platform getPlatform() {
         if (platform == null) {
             platform = Platform.of(this.property(Constants.TEMPLATE_PLATFORM_KEY));
@@ -61,11 +48,11 @@ public final class TemplateProject {
         return platform;
     }
 
-    public void ifCommonProjectPresent(Consumer<Project> consumer) {
-        if (commonProject != null) {
-            consumer.accept(commonProject);
-        }
-    }
+    //public void ifCommonProjectPresent(Consumer<Project> consumer) {
+    //    if (commonProject != null) {
+    //        consumer.accept(commonProject);
+    //    }
+    //}
 
     public <T> T property(String name) {
         //noinspection unchecked
@@ -74,6 +61,6 @@ public final class TemplateProject {
 
     public <T> T rootProperty(String name) {
         //noinspection unchecked
-        return (T) project.getRootProject().property(name);
+        return (T) rootProject.property(name);
     }
 }
