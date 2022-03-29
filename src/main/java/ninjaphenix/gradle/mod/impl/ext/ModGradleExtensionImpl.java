@@ -4,12 +4,14 @@ import ninjaphenix.gradle.mod.impl.Constants;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import ninjaphenix.gradle.mod.impl.DependencyDownloadHelper;
 import org.gradle.api.JavaVersion;
+import org.gradle.api.Project;
 
 public class ModGradleExtensionImpl implements ModGradleExtension {
-    private final DependencyDownloadHelper helper;
+    private DependencyDownloadHelper helper;
+    private final Project project;
 
-    public  ModGradleExtensionImpl() {
-        this.helper = new DependencyDownloadHelper();
+    public  ModGradleExtensionImpl(Project project) {
+        this.project = project;
     }
     @Override
     public String getMinecraftVersion() {
@@ -22,6 +24,14 @@ public class ModGradleExtensionImpl implements ModGradleExtension {
     }
 
     public DependencyDownloadHelper getDependencyDownloadHelper() {
+        if (helper != null) {
+            return helper;
+        }
+        if (project == project.getRootProject()) {
+            helper = new DependencyDownloadHelper();
+        } else {
+            helper = project.getRootProject().getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper();
+        }
         return helper;
     }
 }
