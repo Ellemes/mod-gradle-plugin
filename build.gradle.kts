@@ -17,7 +17,7 @@ group = "ninjaphenix"
 project.extensions.getByType(BasePluginExtension::class).apply {
     archivesName.set("mod-gradle-plugin")
 }
-version = "6.2.1.2"
+version = "6.2.1.3"
 
 repositories {
     maven {

@@ -175,8 +175,8 @@ public final class GradlePlugin implements Plugin<Project> {
                 dependencies.add("modImplementation", "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion);
             } else {
                 for (String module : modules.split(",")) {
-                    //dependencies.add("modImplementation", target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().fabricApiModule(module, fabricApiVersion));
-                    dependencies.add("modImplementation", target.getExtensions().getByType(FabricApiExtension.class).module(module, fabricApiVersion));
+                    //dependencies.add("modImplementation", project.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().fabricApiModule(module, fabricApiVersion));
+                    dependencies.add("modImplementation", project.getExtensions().getByType(FabricApiExtension.class).module(module, fabricApiVersion));
                 }
             }
         }
@@ -227,7 +227,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 });
             } else {
                 for (String module : modules.split(",")) {
-                    dependencies.addProvider("modImplementation", project.provider(() -> target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().qslModule(module, qslVersion)), dep -> {
+                    dependencies.addProvider("modImplementation", project.provider(() -> project.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().qslModule(module, qslVersion)), dep -> {
                         dep.exclude(Map.of("group", "net.fabricmc"));
                     });
                 }
@@ -242,7 +242,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 });
             } else {
                 for (String module : modules.split(",")) {
-                    dependencies.addProvider("modImplementation", project.provider(() -> target.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().quiltedFabricApiModule(module, fabricApiVersion)), dep -> {
+                    dependencies.addProvider("modImplementation", project.provider(() -> project.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().quiltedFabricApiModule(module, fabricApiVersion)), dep -> {
                         dep.exclude(Map.of("group", "net.fabricmc"));
                     });
                 }
