@@ -3,8 +3,7 @@ plugins {
     `maven-publish`
 }
 
-// idk intellij is being funky with buildscripts
-project.extensions.getByType(GradlePluginDevelopmentExtension::class).apply {
+gradlePlugin {
     plugins {
         create("modPlugin") {
             id = "ninjaphenix.gradle.mod"
@@ -14,9 +13,7 @@ project.extensions.getByType(GradlePluginDevelopmentExtension::class).apply {
 }
 
 group = "ninjaphenix"
-project.extensions.getByType(BasePluginExtension::class).apply {
-    archivesName.set("mod-gradle-plugin")
-}
+base.archivesName.set("mod-gradle-plugin")
 version = "6.2.1.7"
 
 repositories {
@@ -28,12 +25,12 @@ repositories {
 }
 
 dependencies {
-    "compileOnly"("dev.architectury:architectury-loom:0.11.0-SNAPSHOT")
-    "compileOnly"("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
-    "implementation"("org.jetbrains:annotations:23.0.0")
+    compileOnly("dev.architectury:architectury-loom:0.11.0-SNAPSHOT")
+    compileOnly("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
+    implementation("org.jetbrains:annotations:23.0.0")
 
     listOf("asm-util", "asm-tree", "asm-commons", "asm-analysis", "asm").forEach {
-        "implementation"("org.ow2.asm:${it}:9.2")
+        implementation("org.ow2.asm:${it}:9.2")
     }
 }
 
