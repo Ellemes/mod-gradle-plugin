@@ -8,5 +8,10 @@ public interface ModGradleExtension {
 
     JavaVersion getJavaVersion();
 
+    // Not sure why I'm exposing this but doesn't do any harm
     DependencyDownloadHelper getDependencyDownloadHelper();
+
+    void fabricApiModules(String... modules);
+
+    void qslModules(String... modules);
 }

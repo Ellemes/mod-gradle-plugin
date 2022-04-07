@@ -2,7 +2,6 @@ package ninjaphenix.gradle.mod.impl;
 
 import dev.architectury.plugin.ArchitectPluginExtension;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
-import net.fabricmc.loom.configuration.FabricApiExtension;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
@@ -33,10 +32,10 @@ public final class GradlePlugin implements Plugin<Project> {
     private final AtomicBoolean validatedArchLoomVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedQuiltLoomVersion = new AtomicBoolean(false);
-    private final ModGradleExtension extension = new ModGradleExtensionImpl();
+    private final DependencyDownloadHelper helper = new DependencyDownloadHelper();
 
     private void registerExtension(Project project) {
-        project.getExtensions().add(ModGradleExtension.class, "mod", extension);
+        project.getProject().getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(project, helper));
     }
 
     @Override
@@ -51,8 +50,9 @@ public final class GradlePlugin implements Plugin<Project> {
 
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
-                this.registerExtension(project);
                 TemplateProject templateProject = new TemplateProject(project);
+                project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_PROPERTY_KEY, templateProject);
+                this.registerExtension(project);
                 project.apply(Map.of("plugin", "java-library"));
                 project.setGroup("ninjaphenix");
                 project.setVersion(templateProject.property("mod_version") + "+" + Constants.MINECRAFT_VERSION);
@@ -168,19 +168,6 @@ public final class GradlePlugin implements Plugin<Project> {
         this.applyArchLoom(project);
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
-        if (project.hasProperty("fabric_api_version") && project.hasProperty("fabric_api_modules")) {
-            String modules = templateProject.property("fabric_api_modules");
-            String fabricApiVersion = templateProject.property("fabric_api_version");
-            if (modules.equals("all")) {
-                dependencies.add("modImplementation", "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion);
-            } else {
-                for (String module : modules.split(",")) {
-                    //dependencies.add("modImplementation", project.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().fabricApiModule(module, fabricApiVersion));
-                    dependencies.add("modImplementation", project.getExtensions().getByType(FabricApiExtension.class).module(module, fabricApiVersion));
-                }
-            }
-        }
-
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {
                 container.named("client", settings -> settings.ideConfigGenerated(false));
@@ -218,37 +205,6 @@ public final class GradlePlugin implements Plugin<Project> {
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
         dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "org.quiltmc:quilt-loader:" + templateProject.property("quilt_loader_version"));
-        if (project.hasProperty("qsl_version") && project.hasProperty("qsl_modules")) {
-            String modules = templateProject.property("qsl_modules");
-            String qslVersion = templateProject.property("qsl_version");
-            if (modules.equals("all")) {
-                dependencies.addProvider("modImplementation", project.provider(() -> "org.quiltmc.qsl:qsl:" + templateProject.property("qsl_version")), dep -> {
-                    dep.exclude(Map.of("group", "net.fabricmc"));
-                });
-            } else {
-                for (String module : modules.split(",")) {
-                    dependencies.addProvider("modImplementation", project.provider(() -> project.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().qslModule(module, qslVersion)), dep -> {
-                        dep.exclude(Map.of("group", "net.fabricmc"));
-                    });
-                }
-            }
-        }
-        if (project.hasProperty("fabric_api_version") && project.hasProperty("fabric_api_modules")) {
-            String modules = templateProject.property("fabric_api_modules");
-            String fabricApiVersion = templateProject.property("fabric_api_version");
-            if (modules.equals("all")) {
-                dependencies.addProvider("modImplementation", project.provider(() -> "org.quiltmc.fabric_api_qsl:fabric-api:" + fabricApiVersion), dep -> {
-                    dep.exclude(Map.of("group", "net.fabricmc"));
-                });
-            } else {
-                for (String module : modules.split(",")) {
-                    dependencies.addProvider("modImplementation", project.provider(() -> project.getExtensions().getByType(ModGradleExtension.class).getDependencyDownloadHelper().quiltedFabricApiModule(module, fabricApiVersion)), dep -> {
-                        dep.exclude(Map.of("group", "net.fabricmc"));
-                    });
-                }
-            }
-        }
-
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {
                 container.named("client", settings -> settings.ideConfigGenerated(false));
