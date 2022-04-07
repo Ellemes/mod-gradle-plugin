@@ -33,6 +33,11 @@ public final class GradlePlugin implements Plugin<Project> {
     private final AtomicBoolean validatedArchLoomVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedQuiltLoomVersion = new AtomicBoolean(false);
+    private final ModGradleExtension extension = new ModGradleExtensionImpl();
+
+    private void registerExtension(Project project) {
+        project.getExtensions().add(ModGradleExtension.class, "mod", extension);
+    }
 
     @Override
     public void apply(@NotNull Project target) {
@@ -42,11 +47,11 @@ public final class GradlePlugin implements Plugin<Project> {
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(Constants.MINECRAFT_VERSION));
         Task buildTask = target.task("buildMod");
 
-        ModGradleExtension modExtension = new ModGradleExtensionImpl();
-        target.allprojects(project -> project.getExtensions().add(ModGradleExtension.class, "mod", modExtension));
+        this.registerExtension(target);
 
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
+                this.registerExtension(project);
                 TemplateProject templateProject = new TemplateProject(project);
                 project.apply(Map.of("plugin", "java-library"));
                 project.setGroup("ninjaphenix");

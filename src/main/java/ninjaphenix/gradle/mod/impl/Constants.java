@@ -7,7 +7,7 @@ public final class Constants {
     public static final String JETBRAINS_ANNOTATIONS_VERSION = "23.0.0";
     public static final String MINECRAFT_VERSION = "1.18.2";
 
-    public static final String REQUIRED_GRADLE_VERSION = "7.4.1";
+    public static final String REQUIRED_GRADLE_VERSION = "7.4.2";
     public static final String REQUIRED_ARCH_LOOM_VERSION = "0.11.0-SNAPSHOT";
     public static final String REQUIRED_ARCH_PLUGIN_VERSION = "3.4-SNAPSHOT";
     public static final String REQUIRED_QUILT_LOOM_VERSION = "0.12-SNAPSHOT";
