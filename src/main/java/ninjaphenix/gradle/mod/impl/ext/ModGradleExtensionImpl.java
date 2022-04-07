@@ -1,6 +1,5 @@
 package ninjaphenix.gradle.mod.impl.ext;
 
-import net.fabricmc.loom.configuration.FabricApiExtension;
 import ninjaphenix.gradle.mod.impl.Constants;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import ninjaphenix.gradle.mod.impl.DependencyDownloadHelper;
@@ -59,8 +58,7 @@ public class ModGradleExtensionImpl implements ModGradleExtension {
         } else {
             if (platform == Platform.FABRIC) {
                 for (String module : modules) {
-                    dependencies.add("modImplementation", project.getExtensions().getByType(FabricApiExtension.class).module(module, fabricApiVersion));
-                    //dependencies.add("modImplementation", helper.fabricApiModule(module, fabricApiVersion));
+                    dependencies.add("modImplementation", helper.fabricApiModule(module, fabricApiVersion));
                 }
             } else if (platform == Platform.QUILT) {
                 for (String module : modules) {

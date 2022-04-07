@@ -19,6 +19,7 @@ import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,9 @@ public final class GradlePlugin implements Plugin<Project> {
     private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedQuiltLoomVersion = new AtomicBoolean(false);
     private final DependencyDownloadHelper helper = new DependencyDownloadHelper();
+
+    public GradlePlugin() throws URISyntaxException {
+    }
 
     private void registerExtension(Project project) {
         project.getProject().getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(project, helper));
