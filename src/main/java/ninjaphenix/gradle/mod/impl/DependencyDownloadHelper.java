@@ -14,6 +14,7 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
+// todo: implement a cache, handle errors...
 public final class DependencyDownloadHelper {
     private final URI fabricMaven;
     private final URI quiltSnapshotMaven;
@@ -28,10 +29,10 @@ public final class DependencyDownloadHelper {
         quiltReleaseMaven = new URI("https://maven.quiltmc.org/repository/release/");
     }
 
-    // todo: qsl has nested modules, need to account for this.
-    public Object qslModule(String module, String version) {
-        if (qslModules.containsKey(module + "_" + version)) {
-            return qslModules.get(module + "_" + version);
+    public Object qslModule(String library, String module, String version) {
+        String key = module.length() == 0 ? library + "_" + version : library + "_" + module + "_" + version;
+        if (qslModules.containsKey(key)) {
+            return qslModules.get(key);
         }
         String qslMetadata = "org/quiltmc/qsl/qsl/" + version + "/maven-metadata.xml";
         URI maven;
@@ -43,30 +44,64 @@ public final class DependencyDownloadHelper {
             throw new RuntimeException("Unable to find specified qsl version");
         }
         Serializer serializer = new Persister();
-        SnapshotVersion targetVersion = null;
+        SnapshotVersion targetQslVersion = null;
         try {
             MavenMetadata value = serializer.read(MavenMetadata.class, maven.resolve(qslMetadata).toURL().openStream());
             String lastUpdated = value.getLastUpdated();
             for (SnapshotVersion snapshotVersion : value.getSnapshotVersions()) {
                 if (snapshotVersion.getUpdated().equals(lastUpdated)) {
-                    targetVersion = snapshotVersion;
+                    targetQslVersion = snapshotVersion;
                     break;
                 }
             }
         } catch (Exception ignored) {
         }
-        if (targetVersion == null) {
+        if (targetQslVersion == null) {
             throw new RuntimeException("Encountered invalid maven metadata for qsl " + version);
         }
-        String qslPom = "org/quiltmc/qsl/qsl/" + version + "/qsl-" + targetVersion.getValue() + ".pom";
+        String qslPomPath = "org/quiltmc/qsl/qsl/" + version + "/qsl-" + targetQslVersion.getValue() + ".pom";
         try {
-            POM value = serializer.read(POM.class, maven.resolve(qslPom).toURL().openStream());
-            for (Dependency dependency : value.getDependencies()) {
-                qslModules.put(dependency.getArtifactId() + "_" + version, dependency.getGradleString());
+            POM qslPom = serializer.read(POM.class, maven.resolve(qslPomPath).toURL().openStream());
+            for (Dependency qslDependency : qslPom.getDependencies()) {
+                qslModules.put(qslDependency.getArtifactId() + "_" + version, qslDependency.getGradleString());
+                // Search for sub modules here...
+                String moduleMavenMetadata = qslDependency.getGroupId().replace(".", "/") + "/" + qslDependency.getArtifactId() + "/" + qslDependency.getVersion() + "/maven-metadata.xml";
+                MavenMetadata moduleMetadata = serializer.read(MavenMetadata.class, maven.resolve(moduleMavenMetadata).toURL().openStream());
+                SnapshotVersion targetModuleVersion = null;
+                String lastUpdated = moduleMetadata.getLastUpdated();
+                for (SnapshotVersion snapshotVersion : moduleMetadata.getSnapshotVersions()) {
+                    if (snapshotVersion.getUpdated().equals(lastUpdated)) {
+                        targetModuleVersion = snapshotVersion;
+                        break;
+                    }
+                }
+                if (targetModuleVersion == null) {
+                    throw new RuntimeException("Encountered invalid maven metadata for qsl-" + qslDependency.getArtifactId() + " " + version);
+                }
+                String qslModulePomPath = qslDependency.getGroupId().replace(".", "/") + "/" + qslDependency.getArtifactId() + "/" + qslDependency.getVersion() +  "/" + qslDependency.getArtifactId() + "-" + targetModuleVersion.getValue() + ".pom";
+                POM qslModulePom = serializer.read(POM.class, maven.resolve(qslModulePomPath).toURL().openStream());
+                for (Dependency moduleDependency : qslModulePom.getDependencies()) {
+                    qslModules.put(qslDependency.getArtifactId() + "_" + moduleDependency.getArtifactId() + "_" + version, moduleDependency.getGradleString());
+                }
             }
         } catch (Exception ignored) {
         }
-        return qslModules.get(module + "_" + version);
+
+        return qslModules.get(key);
+    }
+
+    public Object qslModule(String combined, String version) {
+        String library = combined;
+        String module = "";
+        if (combined.contains("/")) {
+            var parts = combined.split("/");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("qsl sub-module must take form: library/module");
+            }
+            library = parts[0];
+            module = parts[1];
+        }
+        return qslModule(library, module, version);
     }
 
     private boolean mavenFileExists(URI maven, String file) {
