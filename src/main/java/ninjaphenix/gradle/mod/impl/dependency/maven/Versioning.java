@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod.impl.xml;
+package ninjaphenix.gradle.mod.impl.dependency.maven;
 
 import org.simpleframework.xml.Element;
 import org.simpleframework.xml.ElementList;

@@ -1,6 +1,6 @@
 package ninjaphenix.gradle.mod.api.ext;
 
-import ninjaphenix.gradle.mod.impl.DependencyDownloadHelper;
+import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import org.gradle.api.JavaVersion;
 
 public interface ModGradleExtension {

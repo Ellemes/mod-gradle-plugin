@@ -7,7 +7,7 @@ public enum Platform {
     QUILT;
 
     public static Platform of(String name) {
-        return switch(name) {
+        return switch (name) {
             case "common" -> Platform.COMMON;
             case "fabric" -> Platform.FABRIC;
             case "forge" -> Platform.FORGE;

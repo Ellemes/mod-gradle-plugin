@@ -1,10 +1,10 @@
 package ninjaphenix.gradle.mod.impl.ext;
 
-import ninjaphenix.gradle.mod.impl.Constants;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
-import ninjaphenix.gradle.mod.impl.DependencyDownloadHelper;
+import ninjaphenix.gradle.mod.impl.Constants;
 import ninjaphenix.gradle.mod.impl.Platform;
 import ninjaphenix.gradle.mod.impl.TemplateProject;
+import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
@@ -19,6 +19,7 @@ public class ModGradleExtensionImpl implements ModGradleExtension {
         this.project = project;
         this.helper = helper;
     }
+
     @Override
     public String getMinecraftVersion() {
         return Constants.MINECRAFT_VERSION;
@@ -58,11 +59,11 @@ public class ModGradleExtensionImpl implements ModGradleExtension {
         } else {
             if (platform == Platform.FABRIC) {
                 for (String module : modules) {
-                    dependencies.add("modImplementation", helper.fabricApiModule(module, fabricApiVersion));
+                    dependencies.add("modImplementation", helper.fabricApi(module, fabricApiVersion));
                 }
             } else if (platform == Platform.QUILT) {
                 for (String module : modules) {
-                    dependencies.addProvider("modImplementation", project.provider(() -> helper.quiltedFabricApiModule(module, fabricApiVersion)), dep -> {
+                    dependencies.addProvider("modImplementation", project.provider(() -> helper.quiltedFabricApi(module, fabricApiVersion)), dep -> {
                         dep.exclude(Map.of("group", "net.fabricmc"));
                     });
                 }
@@ -86,7 +87,7 @@ public class ModGradleExtensionImpl implements ModGradleExtension {
             });
         } else {
             for (String module : modules) {
-                dependencies.addProvider("modImplementation", project.provider(() -> helper.qslModule(module, qslVersion)), dep -> {
+                dependencies.addProvider("modImplementation", project.provider(() -> helper.qsl(module, qslVersion)), dep -> {
                     dep.exclude(Map.of("group", "net.fabricmc"));
                 });
             }

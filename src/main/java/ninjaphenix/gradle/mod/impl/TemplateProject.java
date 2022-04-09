@@ -6,10 +6,10 @@ import java.util.function.Consumer;
 
 public final class TemplateProject {
     private final Project project;
+    private final Project commonProject;
     private Boolean producesReleaseArtifact;
     private Boolean usesDataGen, usesMixins, usesAccessTransformers;
     private Platform platform;
-    private final Project commonProject;
 
     public TemplateProject(Project project) {
         this.project = project;

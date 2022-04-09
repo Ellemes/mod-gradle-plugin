@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod.impl.xml;
+package ninjaphenix.gradle.mod.impl.dependency.maven;
 
 import org.simpleframework.xml.Element;
 import org.simpleframework.xml.Root;
@@ -9,6 +9,8 @@ public class SnapshotVersion {
     private String value;
     @Element
     private String updated;
+    @Element
+    private String extension;
 
     public String getValue() {
         return value;
@@ -16,5 +18,9 @@ public class SnapshotVersion {
 
     public String getUpdated() {
         return updated;
+    }
+
+    public String getExtension() {
+        return extension;
     }
 }

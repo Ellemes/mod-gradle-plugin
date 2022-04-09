@@ -35,6 +35,8 @@ public class TransformingClassVisitor extends ClassVisitor {
         if (DEBUG)
             System.out.println("  METHOD " + methodName);
         return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, methodName, descriptor, signature, exceptions)) {
+            int paramIndex = 1;
+
             @Override
             public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
                 // todo: branches in code causes locals to have same name, is fine but may lead to confusion e.g.
@@ -65,8 +67,6 @@ public class TransformingClassVisitor extends ClassVisitor {
 
             // Called before visit local, so we have to calculate name the same way.
             // Only seems to be used for records atm.
-            int paramIndex = 1;
-
             @Override
             public void visitParameter(String name, int access) {
                 if (DEBUG)

@@ -3,6 +3,7 @@ package ninjaphenix.gradle.mod.impl;
 import dev.architectury.plugin.ArchitectPluginExtension;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
+import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -33,10 +34,7 @@ public final class GradlePlugin implements Plugin<Project> {
     private final AtomicBoolean validatedArchLoomVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedQuiltLoomVersion = new AtomicBoolean(false);
-    private final DependencyDownloadHelper helper = new DependencyDownloadHelper();
-
-    public GradlePlugin() throws URISyntaxException {
-    }
+    private DependencyDownloadHelper helper;
 
     private void registerExtension(Project project) {
         project.getProject().getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(project, helper));
@@ -46,6 +44,10 @@ public final class GradlePlugin implements Plugin<Project> {
     public void apply(@NotNull Project target) {
         this.validateGradleVersion(target);
         this.validateArchPluginVersion(target);
+        try {
+            helper = new DependencyDownloadHelper(target.getProjectDir().toPath().resolve(".gradle/mod-cache/"));
+        } catch (URISyntaxException ignored) {
+        }
         target.apply(Map.of("plugin", "architectury-plugin"));
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(Constants.MINECRAFT_VERSION));
         Task buildTask = target.task("buildMod");
