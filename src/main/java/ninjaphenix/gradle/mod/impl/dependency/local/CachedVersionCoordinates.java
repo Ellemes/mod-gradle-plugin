@@ -4,26 +4,35 @@ import org.simpleframework.xml.Element;
 import org.simpleframework.xml.ElementMap;
 import org.simpleframework.xml.Root;
 
-import java.util.HashMap;
+import java.time.Instant;
+import java.util.Date;
+import java.util.LinkedHashMap;
 
-@Root
+@Root(name = "cached_coordinates")
 public class CachedVersionCoordinates {
-    @Element
-    private String etag;
-    @ElementMap
-    private HashMap<String, String> coordinates;
+    @Element(name = "entity_tag")
+    private String entityTag;
+    @Element(name = "last_checked_time")
+    private long lastCheckedTime;
+    @ElementMap(attribute = true, key="id")
+    private LinkedHashMap<String, String> coordinates;
 
-    public CachedVersionCoordinates(String etag) {
-        this.etag = etag;
-        this.coordinates = new HashMap<>();
+    public CachedVersionCoordinates(String entityTag) {
+        this.entityTag = entityTag;
+        this.lastCheckedTime = Date.from(Instant.now()).getTime();
+        this.coordinates = new LinkedHashMap<>();
     }
 
     public CachedVersionCoordinates() {
 
     }
 
-    public String getEtag() {
-        return etag;
+    public String getEntityTag() {
+        return entityTag;
+    }
+
+    public long getLastCheckedTime() {
+        return lastCheckedTime;
     }
 
     public String get(String thing) {

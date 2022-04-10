@@ -19,6 +19,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +28,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-// todo: implement a cache, handle errors...
+// todo: handle errors...
 public final class DependencyDownloadHelper {
+    private static final long CHECK_DELAY = 1000 * 60 * 60 * 24;
     private static final String FABRIC_API_FILE = "fabric_api.xml";
     private static final String QSL_FILE = "qsl.xml";
     private static final String QUILTED_FABRIC_API_FILE = "quilted_fabric_api.xml";
@@ -105,12 +108,18 @@ public final class DependencyDownloadHelper {
             try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
                 LibraryXml data = serializer.read(LibraryXml.class, reader);
                 data.getEntries().forEach((version, coordinates) -> {
-                    this.withMavenOf(mavens, fileUrl.apply(version), friendlyName, (maven, eTag) -> {
-                        if (eTag.equals(coordinates.getEtag())) {
-                            System.out.println("Loaded from: " + relativeFilePath + ": " + version);
-                            dependables.put(version, coordinates);
-                        }
-                    });
+                    if (Boolean.getBoolean("mod.ignoreCacheCheckDelay") || Date.from(Instant.now()).getTime() - coordinates.getLastCheckedTime() >= CHECK_DELAY) {
+                        this.withMavenOf(mavens, fileUrl.apply(version), friendlyName, (maven, eTag) -> {
+                            if (eTag.equals(coordinates.getEntityTag())) {
+                                System.out.println("Loaded from: " + relativeFilePath + ": " + version);
+                                dependables.put(version, coordinates);
+                            }
+                        });
+                    } else {
+                        System.out.println("Loaded from (no check) " + relativeFilePath + ": " + version + ", diff = " + (Date.from(Instant.now()).getTime() - coordinates.getLastCheckedTime()));
+                        dependables.put(version, coordinates);
+                    }
+
                 });
             } catch (IOException e) {
                 // IO error

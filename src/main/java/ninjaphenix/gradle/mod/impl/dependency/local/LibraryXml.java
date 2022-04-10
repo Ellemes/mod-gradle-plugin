@@ -5,9 +5,9 @@ import org.simpleframework.xml.Root;
 
 import java.util.Map;
 
-@Root
+@Root(name = "versions")
 public class LibraryXml {
-    @ElementMap
+    @ElementMap(attribute = true, key = "version", inline = true)
     private Map<String, CachedVersionCoordinates> entries;
 
     public LibraryXml() {

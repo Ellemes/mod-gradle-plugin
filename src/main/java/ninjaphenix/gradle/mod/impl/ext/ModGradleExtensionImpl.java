@@ -35,7 +35,7 @@ public class ModGradleExtensionImpl implements ModGradleExtension {
     }
 
     @Override
-    public void fabricApiModules(String... modules) {
+    public void fabricApi(String... modules) {
         if (!project.hasProperty(Constants.TEMPLATE_PROPERTY_KEY)) {
             throw new IllegalStateException("Only usable on a platform project");
         }
@@ -72,7 +72,7 @@ public class ModGradleExtensionImpl implements ModGradleExtension {
     }
 
     @Override
-    public void qslModules(String... modules) {
+    public void qsl(String... modules) {
         if (!project.hasProperty(Constants.TEMPLATE_PROPERTY_KEY)) {
             throw new IllegalStateException("Only usable on a platform project");
         }
