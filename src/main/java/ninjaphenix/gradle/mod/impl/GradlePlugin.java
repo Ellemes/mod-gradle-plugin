@@ -294,12 +294,13 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void validateQuiltLoomVersionIfNeeded(Project target) {
-        //Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
+        //Set<ResolvedArtifact> artifacts = new TreeSet<>(Comparator.comparing(it -> it.getModuleVersion().getId().getGroup(), String::compareTo));
+        //artifacts.addAll(target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts());
         //for (ResolvedArtifact artifact : artifacts) {
         //    ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
         //    target.getLogger().error(identifier.getGroup() + ":" + identifier.getName() + ":" + identifier.getVersion());
         //}
-        this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "quilt-loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
+        this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
     }
 
     private void validatePluginVersionIfNeeded(Project target, AtomicBoolean checked, String group, String name, String requiredVersion, String friendlyName) {
