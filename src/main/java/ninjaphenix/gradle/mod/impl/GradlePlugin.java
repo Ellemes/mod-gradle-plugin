@@ -207,6 +207,10 @@ public final class GradlePlugin implements Plugin<Project> {
         this.validateQuiltLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "org.quiltmc.loom"));
+        project.getRepositories().maven(repo -> {
+            repo.setName("Quilt Snapshot Maven");
+            repo.setUrl("https://maven.quiltmc.org/repository/snapshot/");
+        });
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
         dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
@@ -285,14 +289,17 @@ public final class GradlePlugin implements Plugin<Project> {
         }
     }
 
+    // todo: allow fixed version
     private void validateArchPluginVersion(Project target) {
         this.validatePluginVersionIfNeeded(target, validatedArchPluginVersion, "architectury-plugin", "architectury-plugin.gradle.plugin", Constants.REQUIRED_ARCH_PLUGIN_VERSION, "arch plugin");
     }
 
+    // todo: allow fixed version
     private void validateArchLoomVersionIfNeeded(Project target) {
         this.validatePluginVersionIfNeeded(target, validatedArchLoomVersion, "dev.architectury", "architectury-loom", Constants.REQUIRED_ARCH_LOOM_VERSION, "arch loom");
     }
 
+    // todo: allow version from snapshot or release maven
     private void validateQuiltLoomVersionIfNeeded(Project target) {
         //Set<ResolvedArtifact> artifacts = new TreeSet<>(Comparator.comparing(it -> it.getModuleVersion().getId().getGroup(), String::compareTo));
         //artifacts.addAll(target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts());
@@ -300,7 +307,7 @@ public final class GradlePlugin implements Plugin<Project> {
         //    ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
         //    target.getLogger().error(identifier.getGroup() + ":" + identifier.getName() + ":" + identifier.getVersion());
         //}
-        this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
+        //this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
     }
 
     private void validatePluginVersionIfNeeded(Project target, AtomicBoolean checked, String group, String name, String requiredVersion, String friendlyName) {
@@ -311,7 +318,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 if (identifier.getGroup().equals(group) && identifier.getName().equals(name)) {
                     String pluginVersion = identifier.getVersion();
                     if (!pluginVersion.equals(requiredVersion)) {
-                        throw new IllegalStateException("This plugin requires " + friendlyName + requiredVersion + ", current is " + pluginVersion + ".");
+                        throw new IllegalStateException("This plugin requires " + friendlyName + " " + requiredVersion + ", current is " + pluginVersion + ".");
                     } else {
                         checked.set(true);
                         return;

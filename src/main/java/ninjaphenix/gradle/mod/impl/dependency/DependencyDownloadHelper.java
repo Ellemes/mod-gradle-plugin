@@ -147,7 +147,7 @@ public final class DependencyDownloadHelper {
     }
 
     private void populateQslCache(String version) {
-        String qslBaseUrl = "org/quiltmc/qsl/qsl/" + version + "/";
+        String qslBaseUrl = "org/quiltmc/qsl/" + version + "/";
         this.withTargetVersionOf(List.of(quiltSnapshotMaven, quiltReleaseMaven), qslBaseUrl + "maven-metadata.xml", "qsl", version, (maven, eTag, targetQslVersion) -> {
             CachedVersionCoordinates dependencies = new CachedVersionCoordinates(eTag);
             this.iterateDependencies(maven.resolve(qslBaseUrl + "qsl-" + targetQslVersion.getValue() + ".pom"), qslLib -> {
@@ -167,10 +167,10 @@ public final class DependencyDownloadHelper {
     }
 
     private void populateQuiltedFabricApiCache(String version) {
-        String baseUrl = "org/quiltmc/fabric_api_qsl/fabric-api/" + version + "/";
+        String baseUrl = "org/quiltmc/quilted-fabric-api/quilted-fabric-api/" + version + "/";
         this.withTargetVersionOf(List.of(quiltSnapshotMaven, quiltReleaseMaven), baseUrl + "maven-metadata.xml", "quilted fabric api", version, (maven, eTag, targetVersion) -> {
             CachedVersionCoordinates coordinates = new CachedVersionCoordinates(eTag);
-            this.iterateDependencies(maven.resolve(baseUrl + "fabric-api-" + targetVersion.getValue() + ".pom"), dependency -> {
+            this.iterateDependencies(maven.resolve(baseUrl + "quilted-fabric-api-" + targetVersion.getValue() + ".pom"), dependency -> {
                 coordinates.put(dependency.getArtifactId(), dependency.getGradleString());
             });
             if (coordinates.size() > 0) {
@@ -214,7 +214,7 @@ public final class DependencyDownloadHelper {
         if (cacheDir == null) {
             return;
         }
-        try (BufferedWriter writer = Files.newBufferedWriter(cacheDir.resolve(file), StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)) {
+        try (BufferedWriter writer = Files.newBufferedWriter(cacheDir.resolve(file), StandardCharsets.UTF_8, StandardOpenOption.CREATE)) {
             serializer.write(new LibraryXml(cachedCoordinates), writer);
         } catch (IOException e) {
             // IO error
