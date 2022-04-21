@@ -14,7 +14,7 @@ gradlePlugin {
 
 group = "ninjaphenix"
 base.archivesName.set("mod-gradle-plugin")
-version = "6.2.1.14"
+version = "6.2.2.0"
 
 repositories {
     maven {
@@ -25,8 +25,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly("dev.architectury:architectury-loom:0.11.0-SNAPSHOT")
-    compileOnly("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
+    implementation("dev.architectury:architectury-loom:0.11.0-SNAPSHOT")
+    implementation("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
     implementation("org.jetbrains:annotations:23.0.0")
     implementation("org.simpleframework:simple-xml:2.7.1")
 

@@ -1,10 +1,20 @@
 package ninjaphenix.gradle.mod.impl;
 
 public enum Platform {
-    COMMON,
-    FABRIC,
-    FORGE,
-    QUILT;
+    COMMON("common"),
+    FABRIC("fabric"),
+    FORGE("forge"),
+    QUILT("quilt");
+
+    private final String name;
+
+    Platform(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
 
     public static Platform of(String name) {
         return switch (name) {

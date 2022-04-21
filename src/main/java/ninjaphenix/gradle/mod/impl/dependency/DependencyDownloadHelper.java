@@ -98,8 +98,8 @@ public final class DependencyDownloadHelper {
 
     private void loadCache() {
         this.loadCacheFile(List.of(fabricMaven), (version) -> "net/fabricmc/fabric-api/fabric-api/" + version + "/fabric-api-" + version + ".pom", "fabric api", FABRIC_API_FILE, fabricApiDependables);
-        this.loadCacheFile(List.of(quiltSnapshotMaven, quiltReleaseMaven), (version) -> "org/quiltmc/qsl/qsl/" + version + "/maven-metadata.xml", "qsl", QSL_FILE, qslDependables);
-        this.loadCacheFile(List.of(quiltSnapshotMaven, quiltReleaseMaven), (version) -> "org/quiltmc/fabric_api_qsl/fabric-api/" + version + "/maven-metadata.xml", "quilted fabric api", QUILTED_FABRIC_API_FILE, quiltedFabricApiDependables);
+        this.loadCacheFile(List.of(quiltSnapshotMaven), (version) -> "org/quiltmc/qsl/" + version + "/maven-metadata.xml", "qsl", QSL_FILE, qslDependables);
+        this.loadCacheFile(List.of(quiltSnapshotMaven), (version) -> "org/quiltmc/quilted-fabric-api/quilted-fabric-api/" + version + "/maven-metadata.xml", "quilted fabric api", QUILTED_FABRIC_API_FILE, quiltedFabricApiDependables);
     }
 
     private void loadCacheFile(List<URI> mavens, Function<String, String> fileUrl, String friendlyName, String relativeFilePath, Map<String, CachedVersionCoordinates> dependables) {
@@ -148,7 +148,7 @@ public final class DependencyDownloadHelper {
 
     private void populateQslCache(String version) {
         String qslBaseUrl = "org/quiltmc/qsl/" + version + "/";
-        this.withTargetVersionOf(List.of(quiltSnapshotMaven, quiltReleaseMaven), qslBaseUrl + "maven-metadata.xml", "qsl", version, (maven, eTag, targetQslVersion) -> {
+        this.withTargetVersionOf(List.of(quiltSnapshotMaven), qslBaseUrl + "maven-metadata.xml", "qsl", version, (maven, eTag, targetQslVersion) -> {
             CachedVersionCoordinates dependencies = new CachedVersionCoordinates(eTag);
             this.iterateDependencies(maven.resolve(qslBaseUrl + "qsl-" + targetQslVersion.getValue() + ".pom"), qslLib -> {
                 dependencies.put(qslLib.getArtifactId(), qslLib.getGradleString());
@@ -168,7 +168,7 @@ public final class DependencyDownloadHelper {
 
     private void populateQuiltedFabricApiCache(String version) {
         String baseUrl = "org/quiltmc/quilted-fabric-api/quilted-fabric-api/" + version + "/";
-        this.withTargetVersionOf(List.of(quiltSnapshotMaven, quiltReleaseMaven), baseUrl + "maven-metadata.xml", "quilted fabric api", version, (maven, eTag, targetVersion) -> {
+        this.withTargetVersionOf(List.of(quiltSnapshotMaven), baseUrl + "maven-metadata.xml", "quilted fabric api", version, (maven, eTag, targetVersion) -> {
             CachedVersionCoordinates coordinates = new CachedVersionCoordinates(eTag);
             this.iterateDependencies(maven.resolve(baseUrl + "quilted-fabric-api-" + targetVersion.getValue() + ".pom"), dependency -> {
                 coordinates.put(dependency.getArtifactId(), dependency.getGradleString());

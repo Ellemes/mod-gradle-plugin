@@ -8,8 +8,6 @@ import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
-import org.gradle.api.artifacts.ModuleVersionIdentifier;
-import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -24,7 +22,6 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // Acknowledgements:
@@ -33,7 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class GradlePlugin implements Plugin<Project> {
     private final AtomicBoolean validatedArchLoomVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
-    private final AtomicBoolean validatedQuiltLoomVersion = new AtomicBoolean(false);
     private DependencyDownloadHelper helper;
 
     private void registerExtension(Project project) {
@@ -43,7 +39,6 @@ public final class GradlePlugin implements Plugin<Project> {
     @Override
     public void apply(@NotNull Project target) {
         this.validateGradleVersion(target);
-        this.validateArchPluginVersion(target);
         try {
             helper = new DependencyDownloadHelper(target.getProjectDir().toPath().resolve(".gradle/mod-cache/"));
         } catch (URISyntaxException ignored) {
@@ -123,7 +118,6 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void applyCommon(TemplateProject templateProject, Project target) {
-        this.validateArchLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
         this.applyArchLoom(project);
         DependencyHandler dependencies = project.getDependencies();
@@ -156,19 +150,17 @@ public final class GradlePlugin implements Plugin<Project> {
 
     private void applyArchPlugin(Project project, Platform platform) {
         project.apply(Map.of("plugin", "architectury-plugin"));
-        var architecturyPlugin = project.getExtensions().getByType(ArchitectPluginExtension.class);
+        ArchitectPluginExtension extension = project.getExtensions().getByType(ArchitectPluginExtension.class);
         switch (platform) {
             case COMMON -> {
-                architecturyPlugin.common();
-                architecturyPlugin.setInjectInjectables(false);
+                extension.common(((String) project.getParent().property("template.enabled_platforms")).split(",")); // todo: fixme
+                extension.setInjectInjectables(false);
             }
-            case FABRIC, QUILT -> architecturyPlugin.fabric();
-            case FORGE -> architecturyPlugin.forge();
+            case FABRIC, QUILT, FORGE -> extension.loader(platform.getName());
         }
     }
 
     private void applyFabric(TemplateProject templateProject, Project target) {
-        this.validateArchLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "fabric");
         this.applyArchLoom(project);
@@ -204,16 +196,18 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void applyQuilt(TemplateProject templateProject, Project target) {
-        this.validateQuiltLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
-        project.apply(Map.of("plugin", "org.quiltmc.loom"));
+        project.getExtensions().getExtraProperties().set("loom.platform", "quilt");
+        this.applyArchLoom(project);
+        project.getRepositories().maven(repo -> {
+            repo.setName("Quilt Release Maven");
+            repo.setUrl("https://maven.quiltmc.org/repository/release/");
+        });
         project.getRepositories().maven(repo -> {
             repo.setName("Quilt Snapshot Maven");
             repo.setUrl("https://maven.quiltmc.org/repository/snapshot/");
         });
         DependencyHandler dependencies = project.getDependencies();
-        dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
-        dependencies.add("mappings", project.getExtensions().getByType(LoomGradleExtensionAPI.class).officialMojangMappings());
         dependencies.add("modImplementation", "org.quiltmc:quilt-loader:" + templateProject.property("quilt_loader_version"));
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {
@@ -245,7 +239,6 @@ public final class GradlePlugin implements Plugin<Project> {
     }
 
     private void applyForge(TemplateProject templateProject, Project target) {
-        this.validateArchLoomVersionIfNeeded(target);
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "forge");
         this.applyArchLoom(project);
@@ -286,46 +279,6 @@ public final class GradlePlugin implements Plugin<Project> {
         boolean isExecutingWrapperTaskOnly = tasks.size() == 3 && tasks.get(0).equals(":wrapper") && tasks.get(1).equals("--gradle-version") && tasks.get(2).equals(Constants.REQUIRED_GRADLE_VERSION);
         if (!isCorrectGradleVersion && !isExecutingWrapperTaskOnly) {
             throw new IllegalStateException("This plugin requires gradle " + Constants.REQUIRED_GRADLE_VERSION + " to update run: ./gradlew :wrapper --gradle-version " + Constants.REQUIRED_GRADLE_VERSION);
-        }
-    }
-
-    // todo: allow fixed version
-    private void validateArchPluginVersion(Project target) {
-        this.validatePluginVersionIfNeeded(target, validatedArchPluginVersion, "architectury-plugin", "architectury-plugin.gradle.plugin", Constants.REQUIRED_ARCH_PLUGIN_VERSION, "arch plugin");
-    }
-
-    // todo: allow fixed version
-    private void validateArchLoomVersionIfNeeded(Project target) {
-        this.validatePluginVersionIfNeeded(target, validatedArchLoomVersion, "dev.architectury", "architectury-loom", Constants.REQUIRED_ARCH_LOOM_VERSION, "arch loom");
-    }
-
-    // todo: allow version from snapshot or release maven
-    private void validateQuiltLoomVersionIfNeeded(Project target) {
-        //Set<ResolvedArtifact> artifacts = new TreeSet<>(Comparator.comparing(it -> it.getModuleVersion().getId().getGroup(), String::compareTo));
-        //artifacts.addAll(target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts());
-        //for (ResolvedArtifact artifact : artifacts) {
-        //    ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
-        //    target.getLogger().error(identifier.getGroup() + ":" + identifier.getName() + ":" + identifier.getVersion());
-        //}
-        //this.validatePluginVersionIfNeeded(target, validatedQuiltLoomVersion, "org.quiltmc", "loom", Constants.REQUIRED_QUILT_LOOM_VERSION, "quilt loom");
-    }
-
-    private void validatePluginVersionIfNeeded(Project target, AtomicBoolean checked, String group, String name, String requiredVersion, String friendlyName) {
-        if (!checked.get()) {
-            Set<ResolvedArtifact> artifacts = target.getBuildscript().getConfigurations().getByName("classpath").getResolvedConfiguration().getResolvedArtifacts();
-            for (ResolvedArtifact artifact : artifacts) {
-                ModuleVersionIdentifier identifier = artifact.getModuleVersion().getId();
-                if (identifier.getGroup().equals(group) && identifier.getName().equals(name)) {
-                    String pluginVersion = identifier.getVersion();
-                    if (!pluginVersion.equals(requiredVersion)) {
-                        throw new IllegalStateException("This plugin requires " + friendlyName + " " + requiredVersion + ", current is " + pluginVersion + ".");
-                    } else {
-                        checked.set(true);
-                        return;
-                    }
-                }
-            }
-            throw new IllegalStateException("This plugin requires " + friendlyName + ", add it to the current project un-applied.");
         }
     }
 }
