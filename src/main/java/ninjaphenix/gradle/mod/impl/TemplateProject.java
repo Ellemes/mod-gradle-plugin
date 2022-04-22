@@ -7,8 +7,8 @@ import java.util.function.Consumer;
 public final class TemplateProject {
     private final Project project;
     private final Project commonProject;
-    private Boolean producesReleaseArtifact;
-    private Boolean usesDataGen, usesMixins, usesAccessTransformers;
+    private Boolean producesReleaseArtifact, producesMavenArtifact;
+    private Boolean usesDataGen;
     private Platform platform;
 
     public TemplateProject(Project project) {
@@ -31,27 +31,18 @@ public final class TemplateProject {
         return producesReleaseArtifact;
     }
 
+    public boolean producesMavenArtifact() {
+        if (producesMavenArtifact == null) {
+            producesMavenArtifact = project.hasProperty("template.producesMavenArtifact");
+        }
+        return producesMavenArtifact;
+    }
+
     public boolean usesDataGen() {
         if (usesDataGen == null) {
             usesDataGen = project.hasProperty("template.usesDataGen");
         }
         return usesDataGen;
-    }
-
-    // Forge only
-    public boolean usesMixins() {
-        if (usesMixins == null) {
-            usesMixins = project.hasProperty("template.usesMixins");
-        }
-        return usesMixins;
-    }
-
-    // Forge only.
-    public boolean usesAccessTransformers() {
-        if (usesAccessTransformers == null) {
-            usesAccessTransformers = project.hasProperty("template.usesAccessTransformers");
-        }
-        return usesAccessTransformers;
     }
 
     public Platform getPlatform() {

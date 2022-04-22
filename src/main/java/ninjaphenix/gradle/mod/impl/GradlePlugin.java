@@ -20,6 +20,8 @@ import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.publish.PublishingExtension;
+import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.CompileOptions;
@@ -109,6 +111,22 @@ public final class GradlePlugin implements Plugin<Project> {
                     });
 
                     project.getTasks().getByName("build").dependsOn(minJarTask);
+                }
+
+                if (templateProject.producesMavenArtifact()) {
+                    project.apply(Map.of("plugin", "maven-publish"));
+
+                    project.getExtensions().getByType(PublishingExtension.class).publications(publications -> {
+                        String projectDisplayName = GradlePlugin.capitalize(project.getName());
+                        var publication = (MavenPublication) publications.create("maven" + projectDisplayName);
+                        publication.setArtifactId((String) project.property("template.maven_artifact_id"));
+                        publication.setVersion(project.getVersion() + "-" + project.getName());
+                        var minifyJar = project.getTasks().getByName("minJar");
+                        publication.artifact(minifyJar, it -> {
+                            it.builtBy(minifyJar);
+                            it.setClassifier("");
+                        });
+                    });
                 }
 
                 if (templateProject.usesDataGen()) {
