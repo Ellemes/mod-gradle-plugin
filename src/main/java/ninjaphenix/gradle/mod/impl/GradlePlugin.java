@@ -1,26 +1,36 @@
 package ninjaphenix.gradle.mod.impl;
 
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar;
 import dev.architectury.plugin.ArchitectPluginExtension;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
+import net.fabricmc.loom.task.RemapJarTask;
 import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
+import ninjaphenix.gradle.mod.api.task.MinifyJsonTask;
 import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.artifacts.ModuleDependency;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.component.AdhocComponentWithVariants;
+import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
-import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -89,6 +99,16 @@ public final class GradlePlugin implements Plugin<Project> {
 
                 if (templateProject.producesReleaseArtifact()) {
                     buildTask.dependsOn(project.getTasks().getByName("build"));
+
+                    var minJarTask = project.getTasks().register("minJar", MinifyJsonTask.class, task -> {
+                        Task remapJarTask = project.getTasks().getByName("remapJar");
+                        task.getInput().set(remapJarTask.getOutputs().getFiles().getSingleFile());
+                        task.getArchiveClassifier().set(project.getName());
+                        task.from(project.getRootDir().toPath().resolve("LICENSE"));
+                        task.dependsOn(remapJarTask);
+                    });
+
+                    project.getTasks().getByName("build").dependsOn(minJarTask);
                 }
 
                 if (templateProject.usesDataGen()) {
@@ -106,6 +126,33 @@ public final class GradlePlugin implements Plugin<Project> {
                 } else if (templateProject.getPlatform() == Platform.FORGE) {
                     this.applyForge(templateProject, target);
                 }
+
+                templateProject.ifCommonProjectPresent(common -> {
+                    project.apply(Map.of("plugin", "com.github.johnrengelman.shadow"));
+                    ConfigurationContainer configurations = project.getConfigurations();
+                    Configuration commonConfiguration = configurations.create("common");
+                    Configuration shadowCommonConfiguration = configurations.create("shadowCommon");
+                    configurations.named("compileClasspath").get().extendsFrom(commonConfiguration);
+                    configurations.named("runtimeClasspath").get().extendsFrom(commonConfiguration);
+
+                    ((Jar) project.getTasks().getByName("jar")).getArchiveClassifier().set("dev");
+
+                    ShadowJar shadowJar = (ShadowJar) project.getTasks().getByName("shadowJar");
+                    shadowJar.exclude("architectury.common.json"); // todo: useless?
+                    shadowJar.setConfigurations(List.of(shadowCommonConfiguration));
+                    shadowJar.getArchiveClassifier().set("dev-shadow");
+
+                    RemapJarTask remapJarTask = (RemapJarTask) project.getTasks().getByName("remapJar");
+                    if (templateProject.getPlatform() != Platform.FORGE) {
+                        remapJarTask.getInjectAccessWidener().set(true);
+                    }
+                    remapJarTask.getInputFile().set(shadowJar.getArchiveFile());
+                    remapJarTask.dependsOn(shadowJar);
+                    remapJarTask.getArchiveClassifier().set("fat");
+
+                    AdhocComponentWithVariants variants = (AdhocComponentWithVariants) project.getComponents().findByName("java");
+                    variants.withVariantsFromConfiguration(project.getConfigurations().getByName("shadowRuntimeElements"), ConfigurationVariantDetails::skip);
+                });
             }
         });
 
@@ -113,8 +160,24 @@ public final class GradlePlugin implements Plugin<Project> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
                 TemplateProject templateProject = new TemplateProject(project);
                 this.applyArchPlugin(project, templateProject.getPlatform());
+                templateProject.ifCommonProjectPresent(common -> {
+                    project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
+                    ConfigurationContainer configurations = project.getConfigurations();
+                    String projectDisplayName = GradlePlugin.capitalize(project.getName());
+                    configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
+
+                    DependencyHandler dependencies = project.getDependencies();
+                    ModuleDependency commonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "namedElements"))).setTransitive(false);
+                    ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "transformProduction"+projectDisplayName))).setTransitive(false);
+                    dependencies.add("common", commonDep);
+                    dependencies.add("shadowCommon", shadowCommonDep);
+                });
             }
         });
+    }
+
+    private static String capitalize(String name) {
+        return name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
     }
 
     private void applyCommon(TemplateProject templateProject, Project target) {

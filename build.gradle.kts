@@ -21,6 +21,7 @@ repositories {
         name = "Architectury Maven"
         url = uri("https://maven.architectury.dev")
     }
+    gradlePluginPortal()
     mavenCentral()
 }
 
@@ -29,6 +30,7 @@ dependencies {
     implementation("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
     implementation("org.jetbrains:annotations:23.0.0")
     implementation("org.simpleframework:simple-xml:2.7.1")
+    implementation("gradle.plugin.com.github.johnrengelman:shadow:7.1.2")
 
     listOf("asm-util", "asm-tree", "asm-commons", "asm-analysis", "asm").forEach {
         implementation("org.ow2.asm:${it}:9.2")
