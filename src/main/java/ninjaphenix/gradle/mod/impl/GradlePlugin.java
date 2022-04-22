@@ -161,7 +161,9 @@ public final class GradlePlugin implements Plugin<Project> {
                 TemplateProject templateProject = new TemplateProject(project);
                 this.applyArchPlugin(project, templateProject.getPlatform());
                 templateProject.ifCommonProjectPresent(common -> {
-                    project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
+                    if (common.hasProperty("access_widener_path")) {
+                        project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
+                    }
                     ConfigurationContainer configurations = project.getConfigurations();
                     String projectDisplayName = GradlePlugin.capitalize(project.getName());
                     configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
