@@ -118,13 +118,14 @@ public final class GradlePlugin implements Plugin<Project> {
 
                     project.getExtensions().getByType(PublishingExtension.class).publications(publications -> {
                         String projectDisplayName = GradlePlugin.capitalize(project.getName());
-                        var publication = (MavenPublication) publications.create("maven" + projectDisplayName);
-                        publication.setArtifactId((String) project.property("template.maven_artifact_id"));
-                        publication.setVersion(project.getVersion() + "-" + project.getName());
-                        var minifyJar = project.getTasks().getByName("minJar");
-                        publication.artifact(minifyJar, it -> {
-                            it.builtBy(minifyJar);
-                            it.setClassifier("");
+                        publications.create("maven" + projectDisplayName, MavenPublication.class, publication -> {
+                            publication.setArtifactId((String) project.property("template.maven_artifact_id"));
+                            publication.setVersion(project.getVersion() + "-" + project.getName());
+                            var minifyJar = project.getTasks().getByName("minJar");
+                            publication.artifact(minifyJar, it -> {
+                                it.builtBy(minifyJar);
+                                it.setClassifier("");
+                            });
                         });
                     });
                 }
