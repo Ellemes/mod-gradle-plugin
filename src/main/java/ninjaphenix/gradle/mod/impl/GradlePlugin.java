@@ -99,37 +99,6 @@ public final class GradlePlugin implements Plugin<Project> {
 
                 project.getDependencies().add("implementation", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
 
-                if (templateProject.producesReleaseArtifact()) {
-                    buildTask.dependsOn(project.getTasks().getByName("build"));
-
-                    var minJarTask = project.getTasks().register("minJar", MinifyJsonTask.class, task -> {
-                        Task remapJarTask = project.getTasks().getByName("remapJar");
-                        task.getInput().set(remapJarTask.getOutputs().getFiles().getSingleFile());
-                        task.getArchiveClassifier().set(project.getName());
-                        task.from(project.getRootDir().toPath().resolve("LICENSE"));
-                        task.dependsOn(remapJarTask);
-                    });
-
-                    project.getTasks().getByName("build").dependsOn(minJarTask);
-                }
-
-                if (templateProject.producesMavenArtifact()) {
-                    project.apply(Map.of("plugin", "maven-publish"));
-
-                    project.getExtensions().getByType(PublishingExtension.class).publications(publications -> {
-                        String projectDisplayName = GradlePlugin.capitalize(project.getName());
-                        publications.create("maven" + projectDisplayName, MavenPublication.class, publication -> {
-                            publication.setArtifactId((String) project.property("template.maven_artifact_id"));
-                            publication.setVersion(project.getVersion() + "-" + project.getName());
-                            var minifyJar = project.getTasks().getByName("minJar");
-                            publication.artifact(minifyJar, it -> {
-                                it.builtBy(minifyJar);
-                                it.setClassifier("");
-                            });
-                        });
-                    });
-                }
-
                 if (templateProject.usesDataGen()) {
                     SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
                     sourceSets.named("main", sourceSet -> sourceSet.getResources().srcDir("src/main/generated"));
@@ -193,6 +162,37 @@ public final class GradlePlugin implements Plugin<Project> {
                     dependencies.add("common", commonDep);
                     dependencies.add("shadowCommon", shadowCommonDep);
                 });
+
+                if (templateProject.producesReleaseArtifact()) {
+                    buildTask.dependsOn(project.getTasks().getByName("build"));
+
+                    var minJarTask = project.getTasks().register("minJar", MinifyJsonTask.class, task -> {
+                        Task remapJarTask = project.getTasks().getByName("remapJar");
+                        task.getInput().set(remapJarTask.getOutputs().getFiles().getSingleFile());
+                        task.getArchiveClassifier().set(project.getName());
+                        task.from(project.getRootDir().toPath().resolve("LICENSE"));
+                        task.dependsOn(remapJarTask);
+                    });
+
+                    project.getTasks().getByName("build").dependsOn(minJarTask);
+                }
+
+                if (templateProject.producesMavenArtifact()) {
+                    project.apply(Map.of("plugin", "maven-publish"));
+
+                    project.getExtensions().getByType(PublishingExtension.class).publications(publications -> {
+                        String projectDisplayName = GradlePlugin.capitalize(project.getName());
+                        publications.create("maven" + projectDisplayName, MavenPublication.class, publication -> {
+                            publication.setArtifactId((String) project.property("template.maven_artifact_id"));
+                            publication.setVersion(project.getVersion() + "-" + project.getName());
+                            var minifyJar = project.getTasks().getByName("minJar");
+                            publication.artifact(minifyJar, it -> {
+                                it.builtBy(minifyJar);
+                                it.setClassifier("");
+                            });
+                        });
+                    });
+                }
             }
         });
     }
