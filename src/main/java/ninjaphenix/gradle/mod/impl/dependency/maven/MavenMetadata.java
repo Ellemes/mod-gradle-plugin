@@ -6,7 +6,7 @@ import org.simpleframework.xml.Root;
 import java.util.List;
 
 @Root(name = "metadata", strict = false)
-public class MavenMetadata {
+public final class MavenMetadata {
     @Element
     private Versioning versioning;
 

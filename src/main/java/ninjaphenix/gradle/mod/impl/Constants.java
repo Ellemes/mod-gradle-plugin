@@ -1,11 +1,7 @@
 package ninjaphenix.gradle.mod.impl;
 
-import org.gradle.api.JavaVersion;
-
 public final class Constants {
-    public static final JavaVersion JAVA_VERSION = JavaVersion.VERSION_17;
     public static final String JETBRAINS_ANNOTATIONS_VERSION = "@JETBRAINS_ANNOTATIONS_VERSION@";
-    public static final String MINECRAFT_VERSION = "@MINECRAFT_VERSION@";
 
     public static final String REQUIRED_GRADLE_VERSION = "@REQUIRED_GRADLE_VERSION@";
 

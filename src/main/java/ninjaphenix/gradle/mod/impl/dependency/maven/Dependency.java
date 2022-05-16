@@ -4,7 +4,7 @@ import org.simpleframework.xml.Element;
 import org.simpleframework.xml.Root;
 
 @Root(strict = false)
-public class Dependency {
+public final class Dependency {
     @Element
     private String groupId;
     @Element

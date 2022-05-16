@@ -16,7 +16,7 @@ gradlePlugin {
 
 group = "ninjaphenix"
 base.archivesName.set("mod-gradle-plugin")
-version = "${properties["version"]}+${properties["minecraft_version"]}"
+version = "${properties["version"]}"
 
 repositories {
     maven {
@@ -26,11 +26,22 @@ repositories {
     gradlePluginPortal()
     mavenCentral()
     mavenLocal()
+    maven {
+        name = "MinecraftForge Maven"
+        url = uri("https://maven.minecraftforge.net/")
+    }
+    maven {
+        name = "FabricMC Maven"
+        url = uri("https://maven.fabricmc.net")
+    }
 }
 
 dependencies {
-    implementation("dev.architectury:architectury-loom:0.11.0.9999")
+    implementation("dev.architectury:architectury-loom:0.12.0-SNAPSHOT")
     implementation("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
+    implementation("com.modrinth.minotaur:Minotaur:2.2.0")
+    implementation("me.hypherionmc.cursegradle:CurseGradle:2.0.1")
+    @Suppress("GradlePackageUpdate")
     implementation("org.jetbrains:annotations:${properties["jetbrains_annotations_version"]}")
     implementation("org.simpleframework:simple-xml:2.7.1")
     implementation("gradle.plugin.com.github.johnrengelman:shadow:7.1.2")
@@ -48,7 +59,6 @@ val processSources = tasks.create("processSources", Copy::class) {
     from(inputSources)
     into(outputSources)
     filter<ReplaceTokens>(mapOf("tokens" to mapOf(
-            "MINECRAFT_VERSION" to properties["minecraft_version"],
             "JETBRAINS_ANNOTATIONS_VERSION" to properties["jetbrains_annotations_version"],
             "REQUIRED_GRADLE_VERSION" to properties["required_gradle_version"]
     )))

@@ -4,7 +4,7 @@ import org.simpleframework.xml.Element;
 import org.simpleframework.xml.Root;
 
 @Root(strict = false)
-public class SnapshotVersion {
+public final class SnapshotVersion {
     @Element
     private String value;
     @Element

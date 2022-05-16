@@ -7,7 +7,7 @@ import org.simpleframework.xml.Root;
 import java.util.List;
 
 @Root(name = "versioning", strict = false)
-public class Versioning {
+public final class Versioning {
     @ElementList
     private List<SnapshotVersion> snapshotVersions;
     @Element

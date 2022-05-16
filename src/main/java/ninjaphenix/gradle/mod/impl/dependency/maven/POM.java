@@ -6,7 +6,7 @@ import org.simpleframework.xml.Root;
 import java.util.List;
 
 @Root(name = "project", strict = false)
-public class POM {
+public final class POM {
     @ElementList
     private List<Dependency> dependencies;
 

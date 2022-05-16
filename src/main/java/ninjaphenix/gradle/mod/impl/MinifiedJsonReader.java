@@ -6,7 +6,7 @@ import java.io.FilterReader;
 import java.io.IOException;
 import java.io.Reader;
 
-public class MinifiedJsonReader extends FilterReader {
+public final class MinifiedJsonReader extends FilterReader {
     private boolean inString = false;
     private boolean escapeNextChar = false;
 

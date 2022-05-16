@@ -8,6 +8,7 @@ import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
 import ninjaphenix.gradle.mod.api.task.MinifyJsonTask;
 import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -43,9 +44,12 @@ public final class GradlePlugin implements Plugin<Project> {
     private final AtomicBoolean validatedArchLoomVersion = new AtomicBoolean(false);
     private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
     private DependencyDownloadHelper helper;
+    private String minecraftVersion;
+    private JavaVersion javaVersion;
 
-    private void registerExtension(Project project) {
+    private ModGradleExtension registerExtension(Project project) {
         project.getProject().getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(project, helper));
+        return project.getProject().getExtensions().getByType(ModGradleExtension.class);
     }
 
     @Override
@@ -56,10 +60,17 @@ public final class GradlePlugin implements Plugin<Project> {
         } catch (URISyntaxException ignored) {
         }
         target.apply(Map.of("plugin", "architectury-plugin"));
-        target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(Constants.MINECRAFT_VERSION));
+        var rootModExtension = this.registerExtension(target);
+        minecraftVersion = (String) target.getExtensions().getExtraProperties().get("minecraft_version");
+        if (minecraftVersion == null) {
+            throw new IllegalStateException("Property minecraft_version is missing.");
+        }
+        javaVersion = JavaVersion.toVersion(target.getExtensions().getExtraProperties().get("java_version"));
+        if (javaVersion == null) {
+            throw new IllegalStateException("Property java_version is missing.");
+        }
+        target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
         Task buildTask = target.task("buildMod");
-
-        this.registerExtension(target);
 
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
@@ -68,19 +79,19 @@ public final class GradlePlugin implements Plugin<Project> {
                 this.registerExtension(project);
                 project.apply(Map.of("plugin", "java-library"));
                 project.setGroup("ninjaphenix");
-                project.setVersion(templateProject.property("mod_version") + "+" + Constants.MINECRAFT_VERSION);
+                project.setVersion(templateProject.property("mod_version") + "+" + minecraftVersion);
                 project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().set(templateProject.<String>property("archives_base_name"));
                 project.setBuildDir(project.getRootDir().toPath().resolve("build/" + project.getName()));
 
                 project.getExtensions().configure(JavaPluginExtension.class, extension -> {
-                    extension.setSourceCompatibility(Constants.JAVA_VERSION);
-                    extension.setTargetCompatibility(Constants.JAVA_VERSION);
+                    extension.setSourceCompatibility(javaVersion);
+                    extension.setTargetCompatibility(javaVersion);
                 });
 
                 project.getTasks().withType(JavaCompile.class).configureEach(task -> {
                     CompileOptions options = task.getOptions();
                     options.setEncoding("UTF-8");
-                    options.getRelease().set(Constants.JAVA_VERSION.ordinal() + 1);
+                    options.getRelease().set(javaVersion.ordinal() + 1);
                 });
 
                 project.getRepositories().maven(repo -> {
@@ -103,6 +114,11 @@ public final class GradlePlugin implements Plugin<Project> {
                     SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
                     sourceSets.named("main", sourceSet -> sourceSet.getResources().srcDir("src/main/generated"));
                     project.getTasks().getByName("jar", task -> ((Jar) task).exclude("**/datagen"));
+                }
+
+                if (templateProject.producesReleaseArtifact()) {
+                    project.apply(Map.of("plugin", "com.modrinth.minotaur"));
+                    project.apply(Map.of("plugin", "me.hypherionmc.cursegradle"));
                 }
 
                 if (templateProject.getPlatform() == Platform.COMMON) {
@@ -228,7 +244,7 @@ public final class GradlePlugin implements Plugin<Project> {
         loomPlugin.silentMojangMappingsLicense();
 
         DependencyHandler dependencies = project.getDependencies();
-        dependencies.add("minecraft", "com.mojang:minecraft:" + Constants.MINECRAFT_VERSION);
+        dependencies.add("minecraft", "com.mojang:minecraft:" + minecraftVersion);
         dependencies.add("mappings", loomPlugin.officialMojangMappings());
     }
 
@@ -326,7 +342,7 @@ public final class GradlePlugin implements Plugin<Project> {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "forge");
         this.applyArchLoom(project);
-        project.getDependencies().add("forge", "net.minecraftforge:forge:" + Constants.MINECRAFT_VERSION + "-" + templateProject.property("forge_version"));
+        project.getDependencies().add("forge", "net.minecraftforge:forge:" + minecraftVersion + "-" + templateProject.property("forge_version"));
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {

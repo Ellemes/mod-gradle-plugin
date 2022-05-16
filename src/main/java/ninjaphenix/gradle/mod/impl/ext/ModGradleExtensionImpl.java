@@ -5,33 +5,19 @@ import ninjaphenix.gradle.mod.impl.Constants;
 import ninjaphenix.gradle.mod.impl.Platform;
 import ninjaphenix.gradle.mod.impl.TemplateProject;
 import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
-import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 
 import java.util.Map;
 
-public class ModGradleExtensionImpl implements ModGradleExtension {
+@SuppressWarnings("ClassCanBeRecord")
+public final class ModGradleExtensionImpl implements ModGradleExtension {
     private final Project project;
     private final DependencyDownloadHelper helper;
 
     public ModGradleExtensionImpl(Project project, DependencyDownloadHelper helper) {
         this.project = project;
         this.helper = helper;
-    }
-
-    @Override
-    public String getMinecraftVersion() {
-        return Constants.MINECRAFT_VERSION;
-    }
-
-    @Override
-    public JavaVersion getJavaVersion() {
-        return Constants.JAVA_VERSION;
-    }
-
-    public DependencyDownloadHelper getDependencyDownloadHelper() {
-        return helper;
     }
 
     @Override

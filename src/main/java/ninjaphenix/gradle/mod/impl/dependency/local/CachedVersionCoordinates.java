@@ -9,7 +9,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 
 @Root(name = "cached_coordinates")
-public class CachedVersionCoordinates {
+public final class CachedVersionCoordinates {
     @Element(name = "entity_tag")
     private String entityTag;
     @Element(name = "last_checked_time")
