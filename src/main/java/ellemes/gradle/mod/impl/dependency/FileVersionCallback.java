@@ -1,6 +1,6 @@
-package ninjaphenix.gradle.mod.impl.dependency;
+package ellemes.gradle.mod.impl.dependency;
 
-import ninjaphenix.gradle.mod.impl.dependency.maven.SnapshotVersion;
+import ellemes.gradle.mod.impl.dependency.maven.SnapshotVersion;
 
 import java.net.URI;
 

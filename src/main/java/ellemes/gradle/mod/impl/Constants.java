@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod.impl;
+package ellemes.gradle.mod.impl;
 
 public final class Constants {
     public static final String JETBRAINS_ANNOTATIONS_VERSION = "@JETBRAINS_ANNOTATIONS_VERSION@";

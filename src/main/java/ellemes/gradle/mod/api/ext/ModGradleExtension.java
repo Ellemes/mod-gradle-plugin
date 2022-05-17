@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod.api.ext;
+package ellemes.gradle.mod.api.ext;
 
 public interface ModGradleExtension {
     void fabricApi(String... modules);

@@ -1,16 +1,15 @@
-package ninjaphenix.gradle.mod.impl.ext;
+package ellemes.gradle.mod.impl.ext;
 
-import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
-import ninjaphenix.gradle.mod.impl.Constants;
-import ninjaphenix.gradle.mod.impl.Platform;
-import ninjaphenix.gradle.mod.impl.TemplateProject;
-import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
+import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper;
+import ellemes.gradle.mod.api.ext.ModGradleExtension;
+import ellemes.gradle.mod.impl.Constants;
+import ellemes.gradle.mod.impl.Platform;
+import ellemes.gradle.mod.impl.TemplateProject;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 
 import java.util.Map;
 
-@SuppressWarnings("ClassCanBeRecord")
 public final class ModGradleExtensionImpl implements ModGradleExtension {
     private final Project project;
     private final DependencyDownloadHelper helper;

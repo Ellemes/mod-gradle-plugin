@@ -8,13 +8,13 @@ plugins {
 gradlePlugin {
     plugins {
         create("modPlugin") {
-            id = "ninjaphenix.gradle.mod"
-            implementationClass = "ninjaphenix.gradle.mod.impl.GradlePlugin"
+            id = "ellemes.gradle.mod"
+            implementationClass = "ellemes.gradle.mod.impl.GradlePlugin"
         }
     }
 }
 
-group = "ninjaphenix"
+group = "ellemes"
 base.archivesName.set("mod-gradle-plugin")
 version = "${properties["version"]}"
 

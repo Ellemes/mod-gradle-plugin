@@ -1,13 +1,13 @@
-package ninjaphenix.gradle.mod.impl;
+package ellemes.gradle.mod.impl;
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar;
 import dev.architectury.plugin.ArchitectPluginExtension;
+import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper;
+import ellemes.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.fabricmc.loom.task.RemapJarTask;
-import ninjaphenix.gradle.mod.api.ext.ModGradleExtension;
-import ninjaphenix.gradle.mod.api.task.MinifyJsonTask;
-import ninjaphenix.gradle.mod.impl.dependency.DependencyDownloadHelper;
-import ninjaphenix.gradle.mod.impl.ext.ModGradleExtensionImpl;
+import ellemes.gradle.mod.api.ext.ModGradleExtension;
+import ellemes.gradle.mod.api.task.MinifyJsonTask;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -78,7 +78,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_PROPERTY_KEY, templateProject);
                 this.registerExtension(project);
                 project.apply(Map.of("plugin", "java-library"));
-                project.setGroup("ninjaphenix");
+                project.setGroup("ellemes");
                 project.setVersion(templateProject.property("mod_version") + "+" + minecraftVersion);
                 project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().set(templateProject.<String>property("archives_base_name"));
                 project.setBuildDir(project.getRootDir().toPath().resolve("build/" + project.getName()));

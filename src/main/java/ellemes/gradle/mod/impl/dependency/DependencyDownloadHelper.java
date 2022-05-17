@@ -1,11 +1,11 @@
-package ninjaphenix.gradle.mod.impl.dependency;
+package ellemes.gradle.mod.impl.dependency;
 
-import ninjaphenix.gradle.mod.impl.dependency.local.CachedVersionCoordinates;
-import ninjaphenix.gradle.mod.impl.dependency.local.LibraryXml;
-import ninjaphenix.gradle.mod.impl.dependency.maven.Dependency;
-import ninjaphenix.gradle.mod.impl.dependency.maven.MavenMetadata;
-import ninjaphenix.gradle.mod.impl.dependency.maven.POM;
-import ninjaphenix.gradle.mod.impl.dependency.maven.SnapshotVersion;
+import ellemes.gradle.mod.impl.dependency.local.CachedVersionCoordinates;
+import ellemes.gradle.mod.impl.dependency.local.LibraryXml;
+import ellemes.gradle.mod.impl.dependency.maven.POM;
+import ellemes.gradle.mod.impl.dependency.maven.SnapshotVersion;
+import ellemes.gradle.mod.impl.dependency.maven.Dependency;
+import ellemes.gradle.mod.impl.dependency.maven.MavenMetadata;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
 

@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod.impl;
+package ellemes.gradle.mod.impl;
 
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Label;

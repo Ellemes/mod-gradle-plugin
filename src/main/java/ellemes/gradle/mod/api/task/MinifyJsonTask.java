@@ -1,6 +1,6 @@
-package ninjaphenix.gradle.mod.api.task;
+package ellemes.gradle.mod.api.task;
 
-import ninjaphenix.gradle.mod.impl.MinifiedJsonReader;
+import ellemes.gradle.mod.impl.MinifiedJsonReader;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.tasks.Input;

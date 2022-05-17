@@ -1,4 +1,4 @@
-package ninjaphenix.gradle.mod.impl.dependency.local;
+package ellemes.gradle.mod.impl.dependency.local;
 
 import org.simpleframework.xml.ElementMap;
 import org.simpleframework.xml.Root;
