@@ -18,6 +18,8 @@ group = "ellemes"
 base.archivesName.set("mod-gradle-plugin")
 version = "${properties["version"]}"
 
+ext["required_gradle_version"] = gradle.gradleVersion
+
 repositories {
     maven {
         name = "Architectury Maven"
@@ -55,6 +57,8 @@ val processSources = tasks.create("processSources", Copy::class) {
     val inputSources = sourceSets.getByName("main").allJava
     val outputSources = project.buildDir.resolve("processedSource")
     inputs.files(inputSources.asFileTree)
+    inputs.property("jetbrains_annotations_version", properties["jetbrains_annotations_version"])
+    inputs.property("required_gradle_version", properties["required_gradle_version"])
     outputs.dir(outputSources)
     from(inputSources)
     into(outputSources)
