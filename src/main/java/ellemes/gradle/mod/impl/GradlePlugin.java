@@ -71,6 +71,7 @@ public final class GradlePlugin implements Plugin<Project> {
         }
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
         Task buildTask = target.task("buildMod");
+        Task releaseTask = target.task("releaseMod");
 
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
@@ -119,6 +120,8 @@ public final class GradlePlugin implements Plugin<Project> {
                 if (templateProject.producesReleaseArtifact()) {
                     project.apply(Map.of("plugin", "com.modrinth.minotaur"));
                     project.apply(Map.of("plugin", "me.hypherionmc.cursegradle"));
+                    var projectReleaseTask = project.task("releaseMod");
+                    releaseTask.dependsOn(projectReleaseTask);
                 }
 
                 if (templateProject.getPlatform() == Platform.COMMON) {
