@@ -109,7 +109,7 @@ public final class GradlePlugin implements Plugin<Project> {
 
                 project.getRepositories().mavenLocal();
 
-                project.getDependencies().add("implementation", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
+                project.getDependencies().add("compileOnly", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
 
                 if (templateProject.usesDataGen()) {
                     SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
