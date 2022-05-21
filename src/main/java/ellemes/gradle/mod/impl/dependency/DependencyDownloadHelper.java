@@ -26,11 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 // todo: handle errors...
+// todo: allow usage of quilt release maven
 public final class DependencyDownloadHelper {
-    private static final long CHECK_DELAY = 1000 * 60 * 60 * 24;
+    private static final long CHECK_DELAY = 1000 * 60 * 60 * 24; // 1 day
     private static final String FABRIC_API_FILE = "fabric_api.xml";
     private static final String QSL_FILE = "qsl.xml";
     private static final String QUILTED_FABRIC_API_FILE = "quilted_fabric_api.xml";
@@ -64,10 +64,20 @@ public final class DependencyDownloadHelper {
 
     // <editor-fold desc="# Module getters">
     public Object fabricApi(String module, String version) {
-        if (!fabricApiDependables.containsKey(version)) {
+        if (!fabricApiDependables.containsKey(version) || this.isCacheOutdated(fabricApiDependables.get(version), "fabric " + version)) {
             this.populateFabricApiCache(version);
         }
         return fabricApiDependables.get(version).get(module);
+    }
+
+    private boolean isCacheOutdated(CachedVersionCoordinates coordinates, String friendlyName) {
+        boolean rv = Boolean.getBoolean("mod.ignoreCacheCheckDelay") || Date.from(Instant.now()).getTime() - coordinates.getLastCheckedTime() >= CHECK_DELAY;
+
+        if (rv) {
+            System.out.println("Checking cache is valid for " + friendlyName);
+        }
+
+        return rv;
     }
 
     public Object qsl(String identifier, String version) {
@@ -82,14 +92,14 @@ public final class DependencyDownloadHelper {
             key = identifier;
         }
 
-        if (!qslDependables.containsKey(version)) {
+        if (!qslDependables.containsKey(version) || this.isCacheOutdated(qslDependables.get(version), "qsl " + version)) {
             this.populateQslCache(version);
         }
         return qslDependables.get(version).get(key);
     }
 
     public Object quiltedFabricApi(String module, String version) {
-        if (!quiltedFabricApiDependables.containsKey(version)) {
+        if (!quiltedFabricApiDependables.containsKey(version) || this.isCacheOutdated(quiltedFabricApiDependables.get(version), "quilted " + version)) {
             this.populateQuiltedFabricApiCache(version);
         }
         return quiltedFabricApiDependables.get(version).get(module);
@@ -97,30 +107,17 @@ public final class DependencyDownloadHelper {
     // </editor-fold>
 
     private void loadCache() {
-        this.loadCacheFile(List.of(fabricMaven), (version) -> "net/fabricmc/fabric-api/fabric-api/" + version + "/fabric-api-" + version + ".pom", "fabric api", FABRIC_API_FILE, fabricApiDependables);
-        this.loadCacheFile(List.of(quiltSnapshotMaven), (version) -> "org/quiltmc/qsl/" + version + "/maven-metadata.xml", "qsl", QSL_FILE, qslDependables);
-        this.loadCacheFile(List.of(quiltSnapshotMaven), (version) -> "org/quiltmc/quilted-fabric-api/quilted-fabric-api/" + version + "/maven-metadata.xml", "quilted fabric api", QUILTED_FABRIC_API_FILE, quiltedFabricApiDependables);
+        this.loadCacheFile(fabricApiDependables, FABRIC_API_FILE);
+        this.loadCacheFile(qslDependables, QSL_FILE);
+        this.loadCacheFile(quiltedFabricApiDependables, QUILTED_FABRIC_API_FILE);
     }
 
-    private void loadCacheFile(List<URI> mavens, Function<String, String> fileUrl, String friendlyName, String relativeFilePath, Map<String, CachedVersionCoordinates> dependables) {
+    private void loadCacheFile(Map<String, CachedVersionCoordinates> dependables, String relativeFilePath) {
         Path filePath = cacheDir.resolve(relativeFilePath);
         if (Files.exists(filePath)) {
             try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
                 LibraryXml data = serializer.read(LibraryXml.class, reader);
-                data.getEntries().forEach((version, coordinates) -> {
-                    if (Boolean.getBoolean("mod.ignoreCacheCheckDelay") || Date.from(Instant.now()).getTime() - coordinates.getLastCheckedTime() >= CHECK_DELAY) {
-                        this.withMavenOf(mavens, fileUrl.apply(version), friendlyName, (maven, eTag) -> {
-                            if (eTag.equals(coordinates.getEntityTag())) {
-                                System.out.println("Loaded from: " + relativeFilePath + ": " + version);
-                                dependables.put(version, coordinates);
-                            }
-                        });
-                    } else {
-                        System.out.println("Loaded from (no check) " + relativeFilePath + ": " + version + ", diff = " + (Date.from(Instant.now()).getTime() - coordinates.getLastCheckedTime()));
-                        dependables.put(version, coordinates);
-                    }
-
-                });
+                dependables.putAll(data.getEntries());
             } catch (IOException e) {
                 // IO error
                 e.printStackTrace();
@@ -133,6 +130,7 @@ public final class DependencyDownloadHelper {
 
     // <editor-fold desc="# Cache populators">
     private void populateFabricApiCache(String version) {
+        boolean hasPreviousEntry = fabricApiDependables.containsKey(version);
         String fabricApiPom = "net/fabricmc/fabric-api/fabric-api/" + version + "/fabric-api-" + version + ".pom";
         this.withMavenOf(List.of(fabricMaven), fabricApiPom, "fabric api", (maven, eTag) -> {
             CachedVersionCoordinates coordinates = new CachedVersionCoordinates(eTag);
@@ -142,11 +140,15 @@ public final class DependencyDownloadHelper {
             if (coordinates.size() > 0) {
                 fabricApiDependables.put(version, coordinates);
                 this.saveUpdatedCacheToFile(fabricApiDependables, FABRIC_API_FILE);
+            } else if (hasPreviousEntry) {
+                fabricApiDependables.remove(version);
+                this.saveUpdatedCacheToFile(fabricApiDependables, FABRIC_API_FILE);
             }
         });
     }
 
     private void populateQslCache(String version) {
+        boolean hasPreviousEntry = qslDependables.containsKey(version);
         String qslBaseUrl = "org/quiltmc/qsl/" + version + "/";
         this.withTargetVersionOf(List.of(quiltSnapshotMaven), qslBaseUrl + "maven-metadata.xml", "qsl", version, (maven, eTag, targetQslVersion) -> {
             CachedVersionCoordinates dependencies = new CachedVersionCoordinates(eTag);
@@ -162,11 +164,15 @@ public final class DependencyDownloadHelper {
             if (dependencies.size() > 0) {
                 qslDependables.put(version, dependencies);
                 this.saveUpdatedCacheToFile(qslDependables, QSL_FILE);
+            } else if (hasPreviousEntry) {
+                qslDependables.remove(version);
+                this.saveUpdatedCacheToFile(qslDependables, QSL_FILE);
             }
         });
     }
 
     private void populateQuiltedFabricApiCache(String version) {
+        boolean hasPreviousEntry = quiltedFabricApiDependables.containsKey(version);
         String baseUrl = "org/quiltmc/quilted-fabric-api/quilted-fabric-api/" + version + "/";
         this.withTargetVersionOf(List.of(quiltSnapshotMaven), baseUrl + "maven-metadata.xml", "quilted fabric api", version, (maven, eTag, targetVersion) -> {
             CachedVersionCoordinates coordinates = new CachedVersionCoordinates(eTag);
@@ -175,6 +181,9 @@ public final class DependencyDownloadHelper {
             });
             if (coordinates.size() > 0) {
                 quiltedFabricApiDependables.put(version, coordinates);
+                this.saveUpdatedCacheToFile(quiltedFabricApiDependables, QUILTED_FABRIC_API_FILE);
+            }else if (hasPreviousEntry) {
+                quiltedFabricApiDependables.remove(version);
                 this.saveUpdatedCacheToFile(quiltedFabricApiDependables, QUILTED_FABRIC_API_FILE);
             }
         });
