@@ -1,7 +1,6 @@
 package ellemes.gradle.mod.impl;
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar;
-import dev.architectury.plugin.ArchitectPluginExtension;
 import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import ellemes.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
@@ -58,7 +57,6 @@ public final class GradlePlugin implements Plugin<Project> {
             helper = new DependencyDownloadHelper(target.getProjectDir().toPath().resolve(".gradle/mod-cache/"));
         } catch (URISyntaxException ignored) {
         }
-        target.apply(Map.of("plugin", "architectury-plugin"));
         minecraftVersion = (String) target.getExtensions().getExtraProperties().get(Constants.MINECRAFT_VERSION_KEY);
         if (minecraftVersion == null) {
             throw new IllegalStateException("Property " + Constants.MINECRAFT_VERSION_KEY + " is missing.");
@@ -67,7 +65,6 @@ public final class GradlePlugin implements Plugin<Project> {
         if (javaVersion == null) {
             throw new IllegalStateException("Property java_version is missing.");
         }
-        target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
         Task buildTask = target.task("buildMod");
         Task releaseTask = target.getTasks().create(Constants.MOD_UPLOAD_TASK, ReleaseModTask.class, target.getProjectDir());
         target.getGradle().getTaskGraph().whenReady(graph -> {
@@ -193,18 +190,14 @@ public final class GradlePlugin implements Plugin<Project> {
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
                 TemplateProject templateProject = new TemplateProject(project);
-                this.applyArchPlugin(project, templateProject.getPlatform());
                 templateProject.ifCommonProjectPresent(common -> {
                     if (common.hasProperty("access_widener_path")) {
                         project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
                     }
-                    ConfigurationContainer configurations = project.getConfigurations();
-                    String projectDisplayName = GradlePlugin.capitalize(project.getName());
-                    configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
 
                     DependencyHandler dependencies = project.getDependencies();
                     ModuleDependency commonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "namedElements"))).setTransitive(false);
-                    ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "transformProduction"+projectDisplayName))).setTransitive(false);
+                    ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "namedElements"))).setTransitive(false);
                     dependencies.add("common", commonDep);
                     dependencies.add("shadowCommon", shadowCommonDep);
                 });
@@ -277,17 +270,20 @@ public final class GradlePlugin implements Plugin<Project> {
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("minecraft", "com.mojang:minecraft:" + minecraftVersion);
         dependencies.add("mappings", loomPlugin.officialMojangMappings());
-    }
 
-    private void applyArchPlugin(Project project, Platform platform) {
-        project.apply(Map.of("plugin", "architectury-plugin"));
-        ArchitectPluginExtension extension = project.getExtensions().getByType(ArchitectPluginExtension.class);
-        switch (platform) {
-            case COMMON -> {
-                extension.common(((String) project.getParent().property("template.enabled_platforms")).split(",")); // todo: fixme
-                extension.setInjectInjectables(false);
-            }
-            case FABRIC, QUILT, FORGE -> extension.loader(platform.getName());
+        if (templateProject.getPlatform() != Platform.COMMON) {
+            SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+
+            project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
+                extension.mods(container -> {
+                    container.register("main", settings -> {
+                        settings.sourceSet(sourceSets.getByName("main"));
+                        templateProject.ifCommonProjectPresent(common -> {
+                            settings.sourceSet(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main"));
+                        });
+                    });
+                });
+            });
         }
     }
 
