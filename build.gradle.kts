@@ -40,7 +40,6 @@ repositories {
 
 dependencies {
     implementation("dev.architectury:architectury-loom:0.12.0-SNAPSHOT")
-    implementation("architectury-plugin:architectury-plugin.gradle.plugin:3.4-SNAPSHOT")
     implementation("com.modrinth.minotaur:Minotaur:2.2.0")
     implementation("me.hypherionmc.cursegradle:CurseGradle:2.0.1")
     @Suppress("GradlePackageUpdate")
