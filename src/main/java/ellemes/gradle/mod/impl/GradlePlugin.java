@@ -22,6 +22,7 @@ import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.maven.MavenPublication;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.CompileOptions;
@@ -142,10 +143,10 @@ public final class GradlePlugin implements Plugin<Project> {
                 templateProject.ifCommonProjectPresent(common -> {
                     project.apply(Map.of("plugin", "com.github.johnrengelman.shadow"));
                     ConfigurationContainer configurations = project.getConfigurations();
-                    Configuration commonConfiguration = configurations.create("common");
-                    Configuration shadowCommonConfiguration = configurations.create("shadowCommon");
-                    configurations.named("compileClasspath").get().extendsFrom(commonConfiguration);
-                    configurations.named("runtimeClasspath").get().extendsFrom(commonConfiguration);
+                    Configuration shadowCommonConfiguration = configurations.create("shadowCommon", config -> {
+                        config.setCanBeConsumed(false);
+                        config.setCanBeResolved(true);
+                    });
 
                     ((Jar) project.getTasks().getByName("jar")).getArchiveClassifier().set("dev");
 
@@ -199,7 +200,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     DependencyHandler dependencies = project.getDependencies();
                     ModuleDependency commonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "namedElements"))).setTransitive(false);
                     ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "namedElements"))).setTransitive(false);
-                    dependencies.add("common", commonDep);
+                    dependencies.add("implementation", commonDep);
                     dependencies.add("shadowCommon", shadowCommonDep);
                 });
 
@@ -272,20 +273,19 @@ public final class GradlePlugin implements Plugin<Project> {
         dependencies.add("minecraft", "com.mojang:minecraft:" + minecraftVersion);
         dependencies.add("mappings", loomPlugin.officialMojangMappings());
 
-        if (templateProject.getPlatform() != Platform.COMMON) {
-            SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+        templateProject.ifCommonProjectPresent(common -> {
+            SourceSet main = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
+            SourceSet commonMain = common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
 
             project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
                 extension.mods(container -> {
                     container.register("main", settings -> {
-                        settings.sourceSet(sourceSets.getByName("main"));
-                        templateProject.ifCommonProjectPresent(common -> {
-                            settings.sourceSet(common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main"));
-                        });
+                        settings.sourceSet(main);
+                        settings.sourceSet(commonMain);
                     });
                 });
             });
-        }
+        });
     }
 
     private void applyFabric(TemplateProject templateProject, Project target) {
