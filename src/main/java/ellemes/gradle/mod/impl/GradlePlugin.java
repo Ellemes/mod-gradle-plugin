@@ -74,9 +74,7 @@ public final class GradlePlugin implements Plugin<Project> {
         }
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
         Task buildTask = target.task("buildMod");
-        Task releaseTask = target.task("releaseMod");
-
-        releaseTask.doFirst(task -> {
+        Task releaseTask = target.task("releaseMod", task -> {
             Exception error = null;
             boolean hasChanges = false;
             try {
@@ -94,7 +92,32 @@ public final class GradlePlugin implements Plugin<Project> {
             if (hasChanges) {
                 throw new IllegalStateException("Cannot release with uncommitted changes.");
             } else if (error != null) {
-                throw new IllegalStateException("Error occurred whilst checking for changes.", error);
+                throw new IllegalStateException("Error occurred whilst checking for uncommitted changes.", error);
+            }
+            boolean sameAsRemote = false;
+            try {
+                Process process = new ProcessBuilder()
+                        .directory(target.getProjectDir())
+                        .command("git", "status", "-b", "--porcelain=2")
+                        .start();
+                process.waitFor();
+                try (BufferedReader reader = process.inputReader(StandardCharsets.UTF_8)) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String[] parts = line.split(" ");
+                        if (parts.length >= 2 && "branch.ab".equals(parts[1])) {
+                            sameAsRemote = parts[2].equals("+0") && parts[3].equals("-0");
+                            break;
+                        }
+                    }
+                }
+            } catch (IOException | InterruptedException e) {
+                error = e;
+            }
+            if (!sameAsRemote) {
+                throw new IllegalStateException("Cannot release with un-pushed changes.");
+            } else if (error != null) {
+                throw new IllegalStateException("Error occurred whilst checking for un-pushed changes.", error);
             }
         });
 
