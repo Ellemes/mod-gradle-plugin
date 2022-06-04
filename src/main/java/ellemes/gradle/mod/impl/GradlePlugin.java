@@ -30,7 +30,10 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -72,6 +75,28 @@ public final class GradlePlugin implements Plugin<Project> {
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
         Task buildTask = target.task("buildMod");
         Task releaseTask = target.task("releaseMod");
+
+        releaseTask.doFirst(task -> {
+            Exception error = null;
+            boolean hasChanges = false;
+            try {
+                Process process = new ProcessBuilder()
+                        .directory(target.getProjectDir())
+                        .command("git", "status", "--porcelain")
+                        .start();
+                process.waitFor();
+                try (BufferedReader reader = process.inputReader(StandardCharsets.UTF_8)) {
+                    hasChanges = reader.readLine() != null;
+                }
+            } catch (IOException | InterruptedException e) {
+                error = e;
+            }
+            if (hasChanges) {
+                throw new IllegalStateException("Cannot release with uncommitted changes.");
+            } else if (error != null) {
+                throw new IllegalStateException("Error occurred whilst checking for changes.", error);
+            }
+        });
 
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
