@@ -75,6 +75,9 @@ public final class GradlePlugin implements Plugin<Project> {
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
         Task buildTask = target.task("buildMod");
         Task releaseTask = target.task("releaseMod", task -> {
+            if (!System.getProperty("MOD_IGNORE_CHANGES", "false").equalsIgnoreCase("false")) {
+                return;
+            }
             Exception error = null;
             boolean hasChanges = false;
             try {
