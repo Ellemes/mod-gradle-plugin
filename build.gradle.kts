@@ -68,6 +68,11 @@ val processSources = tasks.create("processSources", Copy::class) {
     )))
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = sourceCompatibility
+}
+
 tasks.withType(JavaCompile::class) {
     setSource(processSources.destinationDir)
     dependsOn(processSources)
