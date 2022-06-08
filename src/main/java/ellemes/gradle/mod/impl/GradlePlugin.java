@@ -85,6 +85,7 @@ public final class GradlePlugin implements Plugin<Project> {
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
                 TemplateProject templateProject = new TemplateProject(project);
+                Platform platform = templateProject.getPlatform();
                 project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_PROPERTY_KEY, templateProject);
                 this.registerExtension(project);
                 project.apply(Map.of("plugin", "java-library"));
@@ -133,13 +134,13 @@ public final class GradlePlugin implements Plugin<Project> {
                     releaseTask.dependsOn(projectReleaseTask);
                 }
 
-                if (templateProject.getPlatform() == Platform.COMMON) {
+                if (platform == Platform.COMMON) {
                     this.applyCommon(templateProject, target);
-                } else if (templateProject.getPlatform() == Platform.FABRIC) {
+                } else if (platform == Platform.FABRIC) {
                     this.applyFabric(templateProject, target);
-                } else if (templateProject.getPlatform() == Platform.QUILT) {
+                } else if (platform == Platform.QUILT) {
                     this.applyQuilt(templateProject, target);
-                } else if (templateProject.getPlatform() == Platform.FORGE) {
+                } else if (platform == Platform.FORGE) {
                     this.applyForge(templateProject, target);
                 }
 
@@ -159,7 +160,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     shadowJar.getArchiveClassifier().set("dev-shadow");
 
                     RemapJarTask remapJarTask = (RemapJarTask) project.getTasks().getByName("remapJar");
-                    if (templateProject.getPlatform() != Platform.FORGE) {
+                    if (platform != Platform.FORGE) {
                         remapJarTask.getInjectAccessWidener().set(true);
                     }
                     remapJarTask.getInputFile().set(shadowJar.getArchiveFile());
@@ -169,6 +170,22 @@ public final class GradlePlugin implements Plugin<Project> {
                     AdhocComponentWithVariants variants = (AdhocComponentWithVariants) project.getComponents().findByName("java");
                     variants.withVariantsFromConfiguration(project.getConfigurations().getByName("shadowRuntimeElements"), ConfigurationVariantDetails::skip);
                 });
+
+                String modInfoFile = platform.getModInfoFile();
+                if (modInfoFile != null) {
+                    //noinspection UnstableApiUsage
+                    project.getTasks().withType(ProcessResources.class).configureEach(task -> {
+                        HashMap<String, String> props = new HashMap<>();
+                        props.put("version", templateProject.property("mod_version"));
+                        Map<String, String> extraProps = templateProject.property("template.extraModInfoReplacements");
+                        if (extraProps != null) {
+                            props.putAll(extraProps);
+                        }
+                        task.getInputs().properties(props);
+                        task.filesMatching("META-INF/mods.toml", details -> details.expand(props));
+                        task.exclude(".cache/*");
+                    });
+                }
             }
         });
 
@@ -296,15 +313,6 @@ public final class GradlePlugin implements Plugin<Project> {
                 }
             });
         });
-
-        //noinspection UnstableApiUsage
-        project.getTasks().withType(ProcessResources.class).configureEach(task -> {
-            HashMap<String, String> props = new HashMap<>();
-            props.put("version", templateProject.property("mod_version"));
-            task.getInputs().properties(props);
-            task.filesMatching("fabric.mod.json", details -> details.expand(props));
-            task.exclude(".cache/*");
-        });
     }
 
     private void applyQuilt(TemplateProject templateProject, Project target) {
@@ -339,15 +347,6 @@ public final class GradlePlugin implements Plugin<Project> {
                 }
             });
         });
-
-        //noinspection UnstableApiUsage
-        project.getTasks().withType(ProcessResources.class).configureEach(task -> {
-            HashMap<String, String> props = new HashMap<>();
-            props.put("version", templateProject.property("mod_version"));
-            task.getInputs().properties(props);
-            task.filesMatching("quilt.mod.json", details -> details.expand(props));
-            task.exclude(".cache/*");
-        });
     }
 
     private void applyForge(TemplateProject templateProject, Project target) {
@@ -373,15 +372,6 @@ public final class GradlePlugin implements Plugin<Project> {
                 //    });
                 //}
             });
-        });
-
-        //noinspection UnstableApiUsage
-        project.getTasks().withType(ProcessResources.class).configureEach(task -> {
-            HashMap<String, String> props = new HashMap<>();
-            props.put("version", templateProject.property("mod_version"));
-            task.getInputs().properties(props);
-            task.filesMatching("META-INF/mods.toml", details -> details.expand(props));
-            task.exclude(".cache/*");
         });
     }
 

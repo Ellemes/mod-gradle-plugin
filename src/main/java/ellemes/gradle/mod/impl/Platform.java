@@ -25,4 +25,13 @@ public enum Platform {
             default -> throw new IllegalStateException("Unexpected mod platform: " + name);
         };
     }
+
+    public String getModInfoFile() {
+        return switch (this) {
+            case FABRIC -> "fabric.mod.json";
+            case FORGE -> "META-INF/mods.toml";
+            case QUILT -> "quilt.mod.json";
+            default -> null;
+        };
+    }
 }
