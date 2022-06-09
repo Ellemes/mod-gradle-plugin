@@ -18,6 +18,7 @@ public final class ModGradleExtensionImpl implements ModGradleExtension {
     private final Project project;
     private final DependencyDownloadHelper helper;
     private QslHelper qslHelper;
+    private FabricApiHelper fabricApiHelper;
 
     public ModGradleExtensionImpl(TemplateProject project, DependencyDownloadHelper helper) {
         this.templateProject = project;
@@ -88,15 +89,16 @@ public final class ModGradleExtensionImpl implements ModGradleExtension {
     @Override
     public QslHelper qsl() {
         if (qslHelper == null) {
+            String qslVersion = templateProject.property("qsl_version");
             qslHelper = new QslHelper() {
                 @Override
                 public String library(String libraryName) {
-                    return null;
+                    return MessageFormat.format("org.quiltmc.qsl:{0}:{1}", libraryName, qslVersion);
                 }
 
                 @Override
                 public String module(String libraryName, String moduleName) {
-                    return null;
+                    return MessageFormat.format("org.quiltmc.qsl.{0}:{1}:{2}", libraryName, moduleName, qslVersion);
                 }
             };
         }
@@ -105,42 +107,46 @@ public final class ModGradleExtensionImpl implements ModGradleExtension {
 
     @Override
     public FabricApiHelper fabricApi() {
-        Platform platform = templateProject.getPlatform();
-        String fabricApiVersion = templateProject.property("fabric_api_version");
-        if (platform == Platform.QUILT) {
-            return new FabricApiHelper() {
-                @Override
-                public String module(String moduleName) {
-                    return MessageFormat.format("org.quiltmc.quilted-fabric-api:{}:{}", moduleName, fabricApiVersion);
-                }
+        if (fabricApiHelper == null) {
+            Platform platform = templateProject.getPlatform();
+            String fabricApiVersion = templateProject.property("fabric_api_version");
+            if (platform == Platform.QUILT) {
+                fabricApiHelper = new FabricApiHelper() {
+                    @Override
+                    public String module(String moduleName) {
+                        return MessageFormat.format("org.quiltmc.quilted-fabric-api:{0}:{1}", moduleName, fabricApiVersion);
+                    }
 
-                @Override
-                public String full() {
-                    return "org.quiltmc.quilted-fabric-api:quilted-fabric-api:" + fabricApiVersion;
-                }
+                    @Override
+                    public String full() {
+                        return "org.quiltmc.quilted-fabric-api:quilted-fabric-api:" + fabricApiVersion;
+                    }
 
-                @Override
-                public String deprecated() {
-                    return "org.quiltmc.quilted-fabric-api:quilted-fabric-api-deprecated:" + fabricApiVersion;
-                }
-            };
+                    @Override
+                    public String deprecated() {
+                        return "org.quiltmc.quilted-fabric-api:quilted-fabric-api-deprecated:" + fabricApiVersion;
+                    }
+                };
+            } else {
+                fabricApiHelper = new FabricApiHelper() {
+                    @Override
+                    public String module(String moduleName) {
+                        return helper.fabricApi(moduleName, fabricApiVersion);
+                    }
+
+                    @Override
+                    public String full() {
+                        return "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion;
+                    }
+
+                    @Override
+                    public String deprecated() {
+                        return "net.fabricmc.fabric-api:fabric-api-deprecated:" + fabricApiVersion;
+                    }
+                };
+            }
         }
 
-        return new FabricApiHelper() {
-            @Override
-            public String module(String moduleName) {
-                return helper.fabricApi(moduleName, fabricApiVersion);
-            }
-
-            @Override
-            public String full() {
-                return "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion;
-            }
-
-            @Override
-            public String deprecated() {
-                return "net.fabricmc.fabric-api:fabric-api-deprecated:" + fabricApiVersion;
-            }
-        };
+        return fabricApiHelper;
     }
 }
