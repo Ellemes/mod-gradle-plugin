@@ -63,7 +63,7 @@ public final class DependencyDownloadHelper {
     }
 
     // <editor-fold desc="# Module getters">
-    public Object fabricApi(String module, String version) {
+    public String fabricApi(String module, String version) {
         if (!fabricApiDependables.containsKey(version) || this.isCacheOutdated(fabricApiDependables.get(version), "fabric " + version)) {
             this.populateFabricApiCache(version);
         }
@@ -80,7 +80,7 @@ public final class DependencyDownloadHelper {
         return rv;
     }
 
-    public Object qsl(String identifier, String version) {
+    public String qsl(String identifier, String version) {
         String key;
         if (identifier.contains("/")) {
             String[] parts = identifier.split("/");
@@ -98,7 +98,7 @@ public final class DependencyDownloadHelper {
         return qslDependables.get(version).get(key);
     }
 
-    public Object quiltedFabricApi(String module, String version) {
+    public String quiltedFabricApi(String module, String version) {
         if (!quiltedFabricApiDependables.containsKey(version) || this.isCacheOutdated(quiltedFabricApiDependables.get(version), "quilted " + version)) {
             this.populateQuiltedFabricApiCache(version);
         }

@@ -48,7 +48,7 @@ public final class GradlePlugin implements Plugin<Project> {
     private String minecraftVersion;
     private JavaVersion javaVersion;
 
-    private ModGradleExtension registerExtension(Project project) {
+    private ModGradleExtension registerExtension(TemplateProject project) {
         project.getProject().getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(project, helper));
         return project.getProject().getExtensions().getByType(ModGradleExtension.class);
     }
@@ -61,7 +61,6 @@ public final class GradlePlugin implements Plugin<Project> {
         } catch (URISyntaxException ignored) {
         }
         target.apply(Map.of("plugin", "architectury-plugin"));
-        var rootModExtension = this.registerExtension(target);
         minecraftVersion = (String) target.getExtensions().getExtraProperties().get("minecraft_version");
         if (minecraftVersion == null) {
             throw new IllegalStateException("Property minecraft_version is missing.");
@@ -85,7 +84,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 TemplateProject templateProject = new TemplateProject(project);
                 Platform platform = templateProject.getPlatform();
                 project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_PROPERTY_KEY, templateProject);
-                this.registerExtension(project);
+                this.registerExtension(templateProject);
                 project.apply(Map.of("plugin", "java-library"));
                 project.setGroup("ellemes");
                 project.setVersion(templateProject.property("mod_version") + "+" + minecraftVersion);
