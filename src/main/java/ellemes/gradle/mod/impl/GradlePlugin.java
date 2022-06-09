@@ -120,8 +120,10 @@ public final class GradlePlugin implements Plugin<Project> {
                 project.getDependencies().add("compileOnly", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
 
                 if (templateProject.usesDataGen()) {
-                    SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
-                    sourceSets.named("main", sourceSet -> sourceSet.getResources().srcDir("src/main/generated"));
+                    if (platform != Platform.FORGE) { // Arch does this for forge...
+                        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+                        sourceSets.named("main", sourceSet -> sourceSet.getResources().srcDir("src/generated/resources"));
+                    }
                     project.getTasks().getByName("jar", task -> ((Jar) task).exclude("**/datagen"));
                 }
 
@@ -308,7 +310,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     container.create("datagen", settings -> {
                         settings.client();
                         settings.vmArg("-Dfabric-api.datagen");
-                        settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
+                        settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/generated/resources"));
                         settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
                         settings.runDir("build/" + project.getName() + "-datagen");
                     });
@@ -342,7 +344,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     container.create("datagen", settings -> {
                         settings.client();
                         settings.vmArg("-Dfabric-api.datagen");
-                        settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
+                        settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/generated/resources"));
                         settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
                         settings.runDir("build/" + project.getName() + "-datagen");
                     });
