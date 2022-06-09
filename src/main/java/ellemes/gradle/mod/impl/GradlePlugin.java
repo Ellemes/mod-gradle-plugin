@@ -19,6 +19,7 @@ import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
+import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.publish.PublishingExtension;
@@ -30,10 +31,7 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -177,13 +175,17 @@ public final class GradlePlugin implements Plugin<Project> {
                     project.getTasks().withType(ProcessResources.class).configureEach(task -> {
                         HashMap<String, String> props = new HashMap<>();
                         props.put("version", templateProject.property("mod_version"));
-                        Map<String, String> extraProps = templateProject.property("template.extraModInfoReplacements");
-                        if (extraProps != null) {
-                            props.putAll(extraProps);
+                        if (project.hasProperty("template.extraModInfoReplacements")) {
+                            Map<String, String> extraProps = templateProject.property("template.extraModInfoReplacements");
+                            if (extraProps != null) {
+                                props.putAll(extraProps);
+                            }
                         }
                         task.getInputs().properties(props);
-                        task.filesMatching("META-INF/mods.toml", details -> details.expand(props));
+                        task.filesMatching(modInfoFile, details -> details.expand(props));
                         task.exclude(".cache/*");
+
+                        //task.setDuplicatesStrategy(DuplicatesStrategy.WARN);
                     });
                 }
             }
@@ -356,21 +358,30 @@ public final class GradlePlugin implements Plugin<Project> {
         project.getDependencies().add("forge", "net.minecraftforge:forge:" + minecraftVersion + "-" + templateProject.property("forge_version"));
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
+            if (templateProject.usesDataGen()) {
+                extension.forge(forgeExtensionAPI -> {
+                    forgeExtensionAPI.dataGen(dataGenConsumer -> {
+                        dataGenConsumer.mod(templateProject.<String>property("mod_id"));
+                    });
+                });
+            }
             extension.runs(container -> {
                 container.named("client", settings -> settings.ideConfigGenerated(false));
                 container.named("server", settings -> {
                     settings.ideConfigGenerated(false);
                     settings.serverWithGui();
                 });
-                //if (templateProject.usesDataGen()) {
-                //    container.create("datagen", settings -> {
-                //        settings.client();
-                //        settings.vmArg("-Dfabric-api.datagen");
-                //        settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/main/generated"));
-                //        settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
-                //        settings.runDir("build/" + project.getName() + "-datagen");
-                //    });
-                //}
+                if (templateProject.usesDataGen()) {
+                    container.named("data", settings -> {
+                        settings.programArg("--existing");
+                        settings.programArg(project.file("src/main/resources").getAbsolutePath());
+                        templateProject.ifCommonProjectPresent(commonProject -> {
+                            settings.programArg("--existing");
+                            settings.programArg(commonProject.file("src/main/resources").getAbsolutePath());
+                        });
+                        settings.runDir("build/" + project.getName() + "-datagen");
+                    });
+                }
             });
         });
     }
