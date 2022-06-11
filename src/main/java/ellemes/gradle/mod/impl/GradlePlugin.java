@@ -268,24 +268,19 @@ public final class GradlePlugin implements Plugin<Project> {
         project.apply(Map.of("plugin", "dev.architectury.loom"));
         LoomGradleExtensionAPI loomPlugin = project.getExtensions().getByType(LoomGradleExtensionAPI.class);
         loomPlugin.silentMojangMappingsLicense();
+        loomPlugin.mods(container -> {
+            container.register("main", settings -> {
+                SourceSet main = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
+                settings.sourceSet(main);
+                templateProject.ifCommonProjectPresent(common -> {
+                    settings.configuration(project.getConfigurations().getByName("shadowCommon"));
+                });
+            });
+        });
 
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("minecraft", "com.mojang:minecraft:" + minecraftVersion);
         dependencies.add("mappings", loomPlugin.officialMojangMappings());
-
-        templateProject.ifCommonProjectPresent(common -> {
-            SourceSet main = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
-            SourceSet commonMain = common.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main");
-
-            project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
-                extension.mods(container -> {
-                    container.register("main", settings -> {
-                        settings.sourceSet(main);
-                        settings.sourceSet(commonMain);
-                    });
-                });
-            });
-        });
     }
 
     private void applyFabric(TemplateProject templateProject, Project target) {
