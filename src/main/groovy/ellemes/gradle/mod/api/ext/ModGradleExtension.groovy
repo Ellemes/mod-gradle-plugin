@@ -4,8 +4,6 @@ import ellemes.gradle.mod.api.helpers.FabricApiHelper
 import ellemes.gradle.mod.api.helpers.QslHelper
 
 interface ModGradleExtension {
-    @Deprecated void fabricApi(String... modules)
-    @Deprecated void qsl(String... modules)
     QslHelper qsl()
     FabricApiHelper fabricApi()
 }
