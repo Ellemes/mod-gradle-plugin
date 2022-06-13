@@ -1,7 +1,7 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
-    `java-gradle-plugin`
+    `groovy-gradle-plugin`
     `maven-publish`
 }
 
