@@ -222,9 +222,9 @@ final class DependencyDownloadHelper {
         }
     }
 
-    private static void withMavenOf(List<URI> mavens, String type, String friendlyName, BiConsumer<URI, String> callback) {
+    private static void withMavenOf(List<URI> mavens, String file, String friendlyName, BiConsumer<URI, String> callback) {
         mavens.forEach {
-            String eTag = DependencyDownloadHelper.getEtag(it, type)
+            String eTag = DependencyDownloadHelper.getEtag(it, file)
             if (eTag != null) {
                 callback.accept(it, eTag)
                 return

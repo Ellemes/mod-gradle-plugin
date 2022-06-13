@@ -49,7 +49,7 @@ dependencies {
     implementation("gradle.plugin.com.github.johnrengelman:shadow:7.1.2")
 
     listOf("asm-util", "asm-tree", "asm-commons", "asm-analysis", "asm").forEach {
-        implementation("org.ow2.asm:${it}:9.2")
+        implementation("org.ow2.asm:${it}:9.3")
     }
 }
 
