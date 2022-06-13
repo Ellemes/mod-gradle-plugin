@@ -19,14 +19,14 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
 
     ModGradleExtensionImpl(TemplateProject project, DependencyDownloadHelper helper) {
         this.templateProject = project
-        this.project = project.getProject()
+        this.project = project.project
         this.helper = helper
     }
 
     @Override
     void fabricApi(String... modules) {
         if (!project.hasProperty(Constants.FABRIC_API_VERSION_KEY)) {
-            throw new IllegalStateException("Must specify ${Constants.FABRIC_API_VERSION_KEY} in gradle.properties");
+            throw new IllegalStateException("Must specify ${Constants.FABRIC_API_VERSION_KEY} in gradle.properties")
         }
         Platform platform = templateProject.platform
         if (!(platform == Platform.FABRIC || platform == Platform.QUILT)) {
@@ -45,7 +45,7 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
             } else {
                 if (platform == Platform.FABRIC) {
                     for (String module : modules) {
-                        add("modImplementation", helper.fabricApi(module, fabricApiVersion));
+                        add("modImplementation", helper.fabricApi(module, fabricApiVersion))
                     }
                 } else if (platform == Platform.QUILT) {
                     for (String module : modules) {
@@ -56,13 +56,12 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
                 }
             }
         }
-
     }
 
     @Override
     void qsl(String... modules) {
         if (!project.hasProperty(Constants.QSL_VERSION_KEY)) {
-            throw new IllegalStateException("Must specify ${Constants.QSL_VERSION_KEY} in gradle.properties");
+            throw new IllegalStateException("Must specify ${Constants.QSL_VERSION_KEY} in gradle.properties")
         }
 
         String qslVersion = project.property(Constants.QSL_VERSION_KEY)
@@ -79,14 +78,12 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
                 }
             }
         }
-
-
     }
 
     @Override
     QslHelper qsl() {
         if (qslHelper == null) {
-            String qslVersion = project.property("qsl_version");
+            String qslVersion = project.property("qsl_version")
             qslHelper = new QslHelper() {
                 @Override
                 String library(String libraryName) {
@@ -142,7 +139,6 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
                 }
             }
         }
-
-        return fabricApiHelper;
+        return fabricApiHelper
     }
 }

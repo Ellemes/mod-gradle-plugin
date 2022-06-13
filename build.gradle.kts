@@ -44,6 +44,7 @@ dependencies {
     implementation("me.hypherionmc.cursegradle:CurseGradle:2.0.1")
     @Suppress("GradlePackageUpdate")
     implementation("org.jetbrains:annotations:${properties["jetbrains_annotations_version"]}")
+    // todo: remove
     implementation("org.simpleframework:simple-xml:2.7.1")
     implementation("gradle.plugin.com.github.johnrengelman:shadow:7.1.2")
 
@@ -53,7 +54,7 @@ dependencies {
 }
 
 val processSources = tasks.create("processSources", Copy::class) {
-    val inputSources = sourceSets.getByName("main").allJava
+    val inputSources = sourceSets["main"].groovy
     val outputSources = project.buildDir.resolve("processedSource")
     inputs.files(inputSources.asFileTree)
     inputs.property("jetbrains_annotations_version", properties["jetbrains_annotations_version"])
@@ -72,7 +73,7 @@ java {
     targetCompatibility = sourceCompatibility
 }
 
-tasks.withType(JavaCompile::class) {
+tasks.withType(GroovyCompile::class) {
     setSource(processSources.destinationDir)
     dependsOn(processSources)
 }

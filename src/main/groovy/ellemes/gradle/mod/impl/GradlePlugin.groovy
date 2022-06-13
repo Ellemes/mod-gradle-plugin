@@ -173,7 +173,7 @@ class GradlePlugin implements Plugin<Project> {
 
         target.subprojects { Project project ->
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
-                TemplateProject templateProject = new TemplateProject(project);
+                TemplateProject templateProject = new TemplateProject(project)
                 templateProject.ifCommonProjectPresent {Project common ->
                     if (common.hasProperty(Constants.ACCESS_WIDENER_KEY)) {
                         project.extensions.getByType(LoomGradleExtensionAPI.class).tap {
@@ -205,7 +205,7 @@ class GradlePlugin implements Plugin<Project> {
                 }
 
                 if (templateProject.producesMavenArtifact()) {
-                    project.apply(Map.of("plugin", "maven-publish"));
+                    project.apply(Map.of("plugin", "maven-publish"))
 
                     project.extensions.getByType(PublishingExtension.class).tap {
                         publications {
