@@ -44,7 +44,6 @@ dependencies {
     implementation("me.hypherionmc.cursegradle:CurseGradle:2.0.1")
     @Suppress("GradlePackageUpdate")
     implementation("org.jetbrains:annotations:${properties["jetbrains_annotations_version"]}")
-    // todo: remove
     implementation("org.simpleframework:simple-xml:2.7.1")
     implementation("gradle.plugin.com.github.johnrengelman:shadow:7.1.2")
 
