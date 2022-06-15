@@ -3,6 +3,7 @@ package ellemes.gradle.mod.impl.ext
 import ellemes.gradle.mod.api.ext.ModGradleExtension
 import ellemes.gradle.mod.api.helpers.FabricApiHelper
 import ellemes.gradle.mod.api.helpers.QslHelper
+import ellemes.gradle.mod.impl.Constants
 import ellemes.gradle.mod.impl.Platform
 import ellemes.gradle.mod.impl.TemplateProject
 import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper
@@ -25,7 +26,7 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
     @Override
     QslHelper qsl() {
         if (qslHelper == null) {
-            String qslVersion = project.property("qsl_version")
+            String qslVersion = project.property(Constants.Keys.QSL_VERSION)
             qslHelper = new QslHelper() {
                 @Override
                 String library(String libraryName) {
@@ -44,7 +45,7 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
     @Override
     FabricApiHelper fabricApi() {
         if (fabricApiHelper == null) {
-            String fabricApiVersion = project.property("fabric_api_version")
+            String fabricApiVersion = project.property(Constants.Keys.FABRIC_API_VERSION)
             if (templateProject.platform == Platform.QUILT) {
                 fabricApiHelper = new FabricApiHelper() {
                     @Override

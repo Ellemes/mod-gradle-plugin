@@ -28,6 +28,7 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.internal.impldep.org.glassfish.jaxb.runtime.v2.runtime.reflect.opt.Const
 import org.gradle.language.jvm.tasks.ProcessResources
 import org.gradle.api.publish.maven.MavenPublication
 
@@ -42,17 +43,16 @@ class GradlePlugin implements Plugin<Project> {
         GradlePlugin.configureParentProject(target)
 
         target.subprojects { Project project ->
-            if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
-                TemplateProject templateProject = new TemplateProject(project)
+            if (project.hasProperty(Constants.Keys.Template.PLATFORM)) {
+                TemplateProject templateProject = GradlePlugin.getOrSetTemplateProject(project)
                 Platform platform = templateProject.platform
-                project.extensions.extraProperties[Constants.TEMPLATE_PLATFORM_KEY] = templateProject
                 project.extensions.add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(templateProject, helper))
                 project.apply(Map.of("plugin", "java-library"))
                 project.group = "ellemes"
-                project.version = "${project.property(Constants.MOD_VERSION_KEY)}+${project.property(Constants.MINECRAFT_VERSION_KEY)}"
+                project.version = "${templateProject.modVersion}+${templateProject.minecraftVersion}"
                 project.extensions.getByType(BasePluginExtension.class).archivesName.set("${project.property("archives_base_name")}")
                 project.buildDir = target.projectDir.toPath().resolve("build/${project.name}")
-                JavaVersion javaVersion = JavaVersion.toVersion(project.property(Constants.JAVA_VERSION_KEY))
+                JavaVersion javaVersion = JavaVersion.toVersion(project.property(Constants.Keys.JAVA_VERSION))
 
                 project.extensions.configure(JavaPluginExtension.class, (JavaPluginExtension extension) -> {
                     extension.sourceCompatibility = extension.targetCompatibility = javaVersion
@@ -118,7 +118,7 @@ class GradlePlugin implements Plugin<Project> {
                     GradlePlugin.configureForgeProject(templateProject)
                 }
 
-                templateProject.ifCommonProjectPresent(common -> {
+                templateProject.ifCommonProjectPresent {commonTemplate ->
                     project.apply(Map.of("plugin", "com.github.johnrengelman.shadow"))
                     ConfigurationContainer configurations = project.configurations
                     Provider<Configuration> shadowCommonConfiguration = configurations.register("shadowCommon") {
@@ -148,15 +148,15 @@ class GradlePlugin implements Plugin<Project> {
                     project.components.named("java", AdhocComponentWithVariants.class) {
                         withVariantsFromConfiguration(configurations["shadowRuntimeElements"], ConfigurationVariantDetails::skip)
                     }
-                })
+                }
 
                 String modInfoFile = platform.modInfoFile
                 if (modInfoFile != null) {
                     project.tasks.withType(ProcessResources.class).configureEach(task -> {
                         HashMap<String, String> props = new HashMap<>()
-                        props.put("version", "${project.property(Constants.MOD_VERSION_KEY)}")
-                        if (project.hasProperty(Constants.TEMPLATE_EXTRA_MOD_INFO_REPLACEMENTS_KEY)) {
-                            Map<String, String> extraProps = templateProject.property(Constants.TEMPLATE_EXTRA_MOD_INFO_REPLACEMENTS_KEY)
+                        props.put("version", "${templateProject.modVersion}")
+                        if (project.hasProperty(Constants.Keys.Template.EXTRA_MOD_INFO_REPLACEMENTS)) {
+                            Map<String, String> extraProps = templateProject.property(Constants.Keys.Template.EXTRA_MOD_INFO_REPLACEMENTS)
                             if (extraProps != null) {
                                 props.putAll(extraProps)
                             }
@@ -172,10 +172,11 @@ class GradlePlugin implements Plugin<Project> {
         }
 
         target.subprojects { Project project ->
-            if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
-                TemplateProject templateProject = new TemplateProject(project)
-                templateProject.ifCommonProjectPresent {Project common ->
-                    if (common.hasProperty(Constants.ACCESS_WIDENER_KEY)) {
+            if (project.hasProperty(Constants.Keys.Template.PLATFORM)) {
+                TemplateProject templateProject = GradlePlugin.getOrSetTemplateProject(project)
+                templateProject.ifCommonProjectPresent {commonTemplate ->
+                    def common = commonTemplate.project
+                    if (common.hasProperty(Constants.Keys.ACCESS_WIDENER)) {
                         project.extensions.getByType(LoomGradleExtensionAPI.class).tap {
                             accessWidenerPath.set(common.extensions.getByType(LoomGradleExtensionAPI.class).accessWidenerPath)
                         }
@@ -210,7 +211,7 @@ class GradlePlugin implements Plugin<Project> {
                     project.extensions.getByType(PublishingExtension.class).tap {
                         publications {
                             create("maven${project.name.capitalize()}", MavenPublication.class) {
-                                artifactId = "${project.property("template.maven_artifact_id")}-${project.property(Constants.MINECRAFT_VERSION_KEY)}-${project.name}"
+                                artifactId = "${project.property(Constants.Keys.Template.MAVEN_ARTIFACT_ID)}-${templateProject.minecraftVersion}-${project.name}"
                                 version = "${project.property("mod_version")}"
                                 var minifyJar = project.tasks["minJar"]
                                 artifact(minifyJar) {
@@ -223,6 +224,14 @@ class GradlePlugin implements Plugin<Project> {
                 }
             }
         }
+    }
+
+    static TemplateProject getOrSetTemplateProject(Project project) {
+        if (!project.hasProperty(Constants.Keys.Template.PROJECT)) {
+            project.extensions.extraProperties[Constants.Keys.Template.PROJECT] = new TemplateProject(project)
+        }
+
+        project.property(Constants.Keys.Template.PROJECT) as TemplateProject
     }
 
     private static void validateGradleVersion(Project target) {
@@ -254,15 +263,15 @@ class GradlePlugin implements Plugin<Project> {
                 register("main") {
                     SourceSet main = project.extensions.getByType(JavaPluginExtension.class).sourceSets["main"]
                     sourceSet(main)
-                    templateProject.ifCommonProjectPresent(common -> {
+                    templateProject.ifCommonProjectPresent{commonTemplate ->
                         configuration(project.configurations["shadowCommon"])
-                    })
+                    }
                 }
             }
         }
 
         project.dependencies.tap {
-            add("minecraft", "com.mojang:minecraft:${project.property(Constants.MINECRAFT_VERSION_KEY)}")
+            add("minecraft", "com.mojang:minecraft:${templateProject.minecraftVersion}")
             add("mappings", loom.officialMojangMappings())
         }
     }
@@ -271,7 +280,7 @@ class GradlePlugin implements Plugin<Project> {
         Project project = templateProject.project
         GradlePlugin.applyArchLoom(templateProject)
         project.dependencies.tap {
-            add("modImplementation", "net.fabricmc:fabric-loader:${project.property(Constants.FABRIC_LOADER_VERSION_KEY)}")
+            add("modImplementation", "net.fabricmc:fabric-loader:${project.property(Constants.Keys.FABRIC_LOADER_VERSION)}")
         }
 
         project.extensions.getByType(LoomGradleExtensionAPI.class).tap {
@@ -285,8 +294,8 @@ class GradlePlugin implements Plugin<Project> {
                 }
             }
 
-            if (project.hasProperty(Constants.ACCESS_WIDENER_KEY)) {
-                accessWidenerPath.set(project.file(project.property(Constants.ACCESS_WIDENER_KEY)))
+            if (project.hasProperty(Constants.Keys.ACCESS_WIDENER)) {
+                accessWidenerPath.set(project.file(project.property(Constants.Keys.ACCESS_WIDENER)))
             }
         }
     }
@@ -296,7 +305,7 @@ class GradlePlugin implements Plugin<Project> {
         project.extensions.extraProperties["loom.platform"] = "fabric"
         GradlePlugin.applyArchLoom(templateProject)
         project.dependencies.tap {
-            add("modImplementation", "net.fabricmc:fabric-loader:${project.property(Constants.FABRIC_LOADER_VERSION_KEY)}")
+            add("modImplementation", "net.fabricmc:fabric-loader:${project.property(Constants.Keys.FABRIC_LOADER_VERSION)}")
         }
         project.extensions.getByType(LoomGradleExtensionAPI.class).tap {
             runs {
@@ -312,7 +321,7 @@ class GradlePlugin implements Plugin<Project> {
                         client()
                         vmArg("-Dfabric-api.datagen")
                         vmArg("-Dfabric-api.datagen.output-dir=${project.file("src/generated/resources")}")
-                        vmArg("-Dfabric-api.datagen.datagen.modid=${project.property("mod_id")}")
+                        vmArg("-Dfabric-api.datagen.datagen.modid=${templateProject.modId}")
                         runDir("build/${project.name}-datagen")
                     }
                 }
@@ -337,7 +346,7 @@ class GradlePlugin implements Plugin<Project> {
             }
         }
         project.dependencies.tap {
-            add("modImplementation", "org.quiltmc:quilt-loader:${project.property(Constants.QUILT_LOADER_VERSION_KEY)}")
+            add("modImplementation", "org.quiltmc:quilt-loader:${project.property(Constants.Keys.QUILT_LOADER_VERSION)}")
         }
         project.extensions.getByType(LoomGradleExtensionAPI.class).tap {
             runs {
@@ -353,7 +362,7 @@ class GradlePlugin implements Plugin<Project> {
                         client()
                         vmArg("-Dfabric-api.datagen")
                         vmArg("-Dfabric-api.datagen.output-dir=${project.file("src/generated/resources")}")
-                        vmArg("-Dfabric-api.datagen.datagen.modid=${project.property("mod_id")}")
+                        vmArg("-Dfabric-api.datagen.datagen.modid=${project.property(templateProject.modId)}")
                         runDir("build/${project.name}-datagen")
                     }
                 }
@@ -366,14 +375,14 @@ class GradlePlugin implements Plugin<Project> {
         project.extensions.extraProperties["loom.platform"] = "forge"
         GradlePlugin.applyArchLoom(templateProject)
         project.dependencies.tap {
-            add("forge", "net.minecraftforge:forge:${project.property(Constants.MINECRAFT_VERSION_KEY)}-${project.property(Constants.FORGE_VERSION_KEY)}")
+            add("forge", "net.minecraftforge:forge:${templateProject.minecraftVersion}-${project.property(Constants.Keys.FORGE_VERSION)}")
         }
 
         project.extensions.getByType(LoomGradleExtensionAPI.class).tap {
             if (templateProject.usesDataGen()) {
                 forge {
                     dataGen {
-                        mod("${project.property("mod_id")}")
+                        mod("${project.property(templateProject.modId)}")
                     }
                 }
             }
@@ -390,9 +399,9 @@ class GradlePlugin implements Plugin<Project> {
                     named("data") {
                         programArg("--existing")
                         programArg(project.file("src/main/resources").absolutePath)
-                        templateProject.ifCommonProjectPresent {Project commonProject ->
+                        templateProject.ifCommonProjectPresent {commonTemplate ->
                             programArg("--existing")
-                            programArg(commonProject.file("src/main/resources").absolutePath)
+                            programArg(commonTemplate.project.file("src/main/resources").absolutePath)
                         }
                         runDir("build/${project.name}-datagen")
                     }

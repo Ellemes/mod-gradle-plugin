@@ -6,17 +6,18 @@ import java.util.function.Consumer
 
 final class TemplateProject {
     private final Project project
-    private final Project commonProject
+    private final TemplateProject commonProject
     private Boolean producesReleaseArtifact, producesMavenArtifact
     private Boolean usesDataGen
     private Platform platform
 
     TemplateProject(Project project) {
         this.project = project
-        if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
-            this.commonProject = project.parent.childProjects["${this.property(Constants.TEMPLATE_COMMON_PROJECT_KEY)}"]
+        if (project.hasProperty(Constants.Keys.Template.COMMON_PROJECT)) {
+            def cProject = project.parent.childProjects["${this.property(Constants.Keys.Template.COMMON_PROJECT)}"]
+            commonProject = GradlePlugin.getOrSetTemplateProject(cProject)
         } else {
-            this.commonProject = null
+            commonProject = null
         }
     }
 
@@ -47,12 +48,12 @@ final class TemplateProject {
 
     Platform getPlatform() {
         if (platform == null) {
-            platform = Platform.of(this.property(Constants.TEMPLATE_PLATFORM_KEY))
+            platform = Platform.of(this.property(Constants.Keys.Template.PLATFORM))
         }
         return platform
     }
 
-    void ifCommonProjectPresent(Consumer<Project> consumer) {
+    void ifCommonProjectPresent(Consumer<TemplateProject> consumer) {
         if (commonProject != null) {
             consumer.accept(commonProject)
         }
@@ -60,5 +61,17 @@ final class TemplateProject {
 
     def <T> T property(String name) {
         return (T) project.property(name)
+    }
+
+    String getModId() {
+        property("mod_id")
+    }
+
+    String getMinecraftVersion() {
+        property("minecraft_version")
+    }
+
+    String getModVersion() {
+        property("mod_version")
     }
 }
