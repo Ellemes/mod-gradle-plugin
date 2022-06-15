@@ -29,6 +29,11 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
             String qslVersion = project.property(Constants.Keys.QSL_VERSION)
             qslHelper = new QslHelper() {
                 @Override
+                String full() {
+                    "org.quiltmc:qsl:${qslVersion}"
+                }
+
+                @Override
                 String library(String libraryName) {
                     "org.quiltmc.qsl:${libraryName}:${qslVersion}"
                 }
@@ -49,13 +54,13 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
             if (templateProject.platform == Platform.QUILT) {
                 fabricApiHelper = new FabricApiHelper() {
                     @Override
-                    String module(String moduleName) {
-                        "org.quiltmc.quilted-fabric-api:${moduleName}:${fabricApiVersion}"
+                    String full() {
+                        "org.quiltmc.quilted-fabric-api:quilted-fabric-api:${fabricApiVersion}"
                     }
 
                     @Override
-                    String full() {
-                        "org.quiltmc.quilted-fabric-api:quilted-fabric-api:${fabricApiVersion}"
+                    String module(String moduleName) {
+                        "org.quiltmc.quilted-fabric-api:${moduleName}:${fabricApiVersion}"
                     }
 
                     @Override
@@ -66,13 +71,13 @@ final class ModGradleExtensionImpl implements ModGradleExtension {
             } else {
                 fabricApiHelper = new FabricApiHelper() {
                     @Override
-                    String module(String moduleName) {
-                        helper.fabricApi(moduleName, fabricApiVersion)
+                    String full() {
+                        "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
                     }
 
                     @Override
-                    String full() {
-                        "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+                    String module(String moduleName) {
+                        helper.fabricApi(moduleName, fabricApiVersion)
                     }
 
                     @Override
