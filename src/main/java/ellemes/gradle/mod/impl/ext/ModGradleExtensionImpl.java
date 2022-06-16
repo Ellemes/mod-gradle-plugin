@@ -92,6 +92,11 @@ public final class ModGradleExtensionImpl implements ModGradleExtension {
             String qslVersion = templateProject.property("qsl_version");
             qslHelper = new QslHelper() {
                 @Override
+                public String full() {
+                    return "org.quiltmc:qsl:" + qslVersion;
+                }
+
+                @Override
                 public String library(String libraryName) {
                     return MessageFormat.format("org.quiltmc.qsl:{0}:{1}", libraryName, qslVersion);
                 }
@@ -113,13 +118,13 @@ public final class ModGradleExtensionImpl implements ModGradleExtension {
             if (platform == Platform.QUILT) {
                 fabricApiHelper = new FabricApiHelper() {
                     @Override
-                    public String module(String moduleName) {
-                        return MessageFormat.format("org.quiltmc.quilted-fabric-api:{0}:{1}", moduleName, fabricApiVersion);
+                    public String full() {
+                        return "org.quiltmc.quilted-fabric-api:quilted-fabric-api:" + fabricApiVersion;
                     }
 
                     @Override
-                    public String full() {
-                        return "org.quiltmc.quilted-fabric-api:quilted-fabric-api:" + fabricApiVersion;
+                    public String module(String moduleName) {
+                        return MessageFormat.format("org.quiltmc.quilted-fabric-api:{0}:{1}", moduleName, fabricApiVersion);
                     }
 
                     @Override
@@ -130,13 +135,13 @@ public final class ModGradleExtensionImpl implements ModGradleExtension {
             } else {
                 fabricApiHelper = new FabricApiHelper() {
                     @Override
-                    public String module(String moduleName) {
-                        return helper.fabricApi(moduleName, fabricApiVersion);
+                    public String full() {
+                        return "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion;
                     }
 
                     @Override
-                    public String full() {
-                        return "net.fabricmc.fabric-api:fabric-api:" + fabricApiVersion;
+                    public String module(String moduleName) {
+                        return helper.fabricApi(moduleName, fabricApiVersion);
                     }
 
                     @Override
