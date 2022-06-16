@@ -362,7 +362,7 @@ class GradlePlugin implements Plugin<Project> {
                         client()
                         vmArg("-Dfabric-api.datagen")
                         vmArg("-Dfabric-api.datagen.output-dir=${project.file("src/generated/resources")}")
-                        vmArg("-Dfabric-api.datagen.datagen.modid=${project.property(templateProject.modId)}")
+                        vmArg("-Dfabric-api.datagen.datagen.modid=${templateProject.modId}")
                         runDir("build/${project.name}-datagen")
                     }
                 }
@@ -382,7 +382,7 @@ class GradlePlugin implements Plugin<Project> {
             if (templateProject.usesDataGen()) {
                 forge {
                     dataGen {
-                        mod("${project.property(templateProject.modId)}")
+                        mod("${templateProject.modId}")
                     }
                 }
             }
