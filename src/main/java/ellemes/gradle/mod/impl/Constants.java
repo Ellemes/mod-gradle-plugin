@@ -9,8 +9,11 @@ public final class Constants {
     public static final String TEMPLATE_COMMON_PROJECT_KEY = "template.commonProject";
 
     public static final String TEMPLATE_PROPERTY_KEY = "template_project";
+    public static final String MINECRAFT_VERSION_KEY = "minecraft_version";
     public static final String FABRIC_API_VERSION_KEY = "fabric_api_version";
     public static final String QSL_VERSION_KEY = "qsl_version";
+
+    public static final String MOD_UPLOAD_TASK = "releaseMod";
 
     private Constants() {
         throw new IllegalStateException("Should not instantiate utility class.");

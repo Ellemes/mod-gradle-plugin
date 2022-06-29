@@ -47,9 +47,8 @@ public final class GradlePlugin implements Plugin<Project> {
     private String minecraftVersion;
     private JavaVersion javaVersion;
 
-    private ModGradleExtension registerExtension(TemplateProject project) {
+    private void registerExtension(TemplateProject project) {
         project.getProject().getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(project, helper));
-        return project.getProject().getExtensions().getByType(ModGradleExtension.class);
     }
 
     @Override
@@ -60,9 +59,9 @@ public final class GradlePlugin implements Plugin<Project> {
         } catch (URISyntaxException ignored) {
         }
         target.apply(Map.of("plugin", "architectury-plugin"));
-        minecraftVersion = (String) target.getExtensions().getExtraProperties().get("minecraft_version");
+        minecraftVersion = (String) target.getExtensions().getExtraProperties().get(Constants.MINECRAFT_VERSION_KEY);
         if (minecraftVersion == null) {
-            throw new IllegalStateException("Property minecraft_version is missing.");
+            throw new IllegalStateException("Property " + Constants.MINECRAFT_VERSION_KEY + " is missing.");
         }
         javaVersion = JavaVersion.toVersion(target.getExtensions().getExtraProperties().get("java_version"));
         if (javaVersion == null) {
@@ -70,7 +69,7 @@ public final class GradlePlugin implements Plugin<Project> {
         }
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
         Task buildTask = target.task("buildMod");
-        Task releaseTask = target.getTasks().create("releaseMod", ReleaseModTask.class, target.getProjectDir());
+        Task releaseTask = target.getTasks().create(Constants.MOD_UPLOAD_TASK, ReleaseModTask.class, target.getProjectDir());
         target.getGradle().getTaskGraph().whenReady(graph -> {
             for (Task task : graph.getAllTasks()) {
                 if (task instanceof ReleaseModTask releaseModTask) {
@@ -128,7 +127,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 if (templateProject.producesReleaseArtifact()) {
                     project.apply(Map.of("plugin", "com.modrinth.minotaur"));
                     project.apply(Map.of("plugin", "me.hypherionmc.cursegradle"));
-                    var projectReleaseTask = project.task("releaseMod");
+                    var projectReleaseTask = project.task(Constants.MOD_UPLOAD_TASK);
                     releaseTask.dependsOn(projectReleaseTask);
                 }
 
@@ -165,7 +164,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     remapJarTask.dependsOn(shadowJar);
                     remapJarTask.getArchiveClassifier().set("fat");
 
-                    AdhocComponentWithVariants variants = (AdhocComponentWithVariants) project.getComponents().findByName("java");
+                    AdhocComponentWithVariants variants = (AdhocComponentWithVariants) project.getComponents().getByName("java");
                     variants.withVariantsFromConfiguration(project.getConfigurations().getByName("shadowRuntimeElements"), ConfigurationVariantDetails::skip);
                 });
 
@@ -250,7 +249,7 @@ public final class GradlePlugin implements Plugin<Project> {
 
     private void applyCommon(TemplateProject templateProject, Project target) {
         Project project = templateProject.getProject();
-        this.applyArchLoom(project);
+        this.applyArchLoom(templateProject);
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.rootProperty("fabric_loader_version"));
 
@@ -269,7 +268,8 @@ public final class GradlePlugin implements Plugin<Project> {
         });
     }
 
-    private void applyArchLoom(Project project) {
+    private void applyArchLoom(TemplateProject templateProject) {
+        Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "dev.architectury.loom"));
         LoomGradleExtensionAPI loomPlugin = project.getExtensions().getByType(LoomGradleExtensionAPI.class);
         loomPlugin.silentMojangMappingsLicense();
@@ -294,7 +294,7 @@ public final class GradlePlugin implements Plugin<Project> {
     private void applyFabric(TemplateProject templateProject, Project target) {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "fabric");
-        this.applyArchLoom(project);
+        this.applyArchLoom(templateProject);
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
@@ -320,7 +320,7 @@ public final class GradlePlugin implements Plugin<Project> {
     private void applyQuilt(TemplateProject templateProject, Project target) {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "quilt");
-        this.applyArchLoom(project);
+        this.applyArchLoom(templateProject);
         project.getRepositories().maven(repo -> {
             repo.setName("Quilt Release Maven");
             repo.setUrl("https://maven.quiltmc.org/repository/release/");
@@ -354,7 +354,7 @@ public final class GradlePlugin implements Plugin<Project> {
     private void applyForge(TemplateProject templateProject, Project target) {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "forge");
-        this.applyArchLoom(project);
+        this.applyArchLoom(templateProject);
         project.getDependencies().add("forge", "net.minecraftforge:forge:" + minecraftVersion + "-" + templateProject.property("forge_version"));
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
