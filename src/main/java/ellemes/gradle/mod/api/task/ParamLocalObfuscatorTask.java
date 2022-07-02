@@ -1,6 +1,6 @@
 package ellemes.gradle.mod.api.task;
 
-import ellemes.gradle.mod.impl.TransformingClassVisitor;
+import ellemes.gradle.mod.impl.task.TransformingClassVisitor;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;

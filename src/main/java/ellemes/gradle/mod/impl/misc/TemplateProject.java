@@ -1,5 +1,6 @@
-package ellemes.gradle.mod.impl;
+package ellemes.gradle.mod.impl.misc;
 
+import ellemes.gradle.mod.impl.Constants;
 import org.gradle.api.Project;
 
 import java.util.function.Consumer;

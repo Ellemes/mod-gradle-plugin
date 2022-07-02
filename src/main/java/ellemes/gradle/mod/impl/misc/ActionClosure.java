@@ -1,4 +1,4 @@
-package ellemes.gradle.mod.impl;
+package ellemes.gradle.mod.impl.misc;
 
 import groovy.lang.Closure;
 import org.gradle.api.Action;

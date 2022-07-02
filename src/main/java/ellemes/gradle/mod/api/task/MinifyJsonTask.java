@@ -1,6 +1,6 @@
 package ellemes.gradle.mod.api.task;
 
-import ellemes.gradle.mod.impl.MinifiedJsonReader;
+import ellemes.gradle.mod.impl.task.MinifiedJsonReader;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.tasks.Input;

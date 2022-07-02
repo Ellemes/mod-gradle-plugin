@@ -5,8 +5,8 @@ import ellemes.gradle.mod.api.helpers.QslHelper;
 import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import ellemes.gradle.mod.api.ext.ModGradleExtension;
 import ellemes.gradle.mod.impl.Constants;
-import ellemes.gradle.mod.impl.Platform;
-import ellemes.gradle.mod.impl.TemplateProject;
+import ellemes.gradle.mod.impl.misc.Platform;
+import ellemes.gradle.mod.impl.misc.TemplateProject;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 

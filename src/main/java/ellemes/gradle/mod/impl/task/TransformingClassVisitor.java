@@ -1,4 +1,4 @@
-package ellemes.gradle.mod.impl;
+package ellemes.gradle.mod.impl.task;
 
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Label;
