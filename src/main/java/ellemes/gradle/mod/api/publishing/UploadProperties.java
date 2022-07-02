@@ -17,13 +17,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class UploadProperties {
     private final Project project;
     private final String version;
     private final String releaseType;
-    private final ArrayList<String> targetVersions;
+    private final HashSet<String> targetVersions;
     private final boolean debug;
     private final String changelog;
 
@@ -31,7 +32,7 @@ public class UploadProperties {
         this.project = project;
         this.version = (String) project.property("mod_version");
         this.releaseType = version.contains("alpha") ? "alpha" : version.contains("beta") ? "beta" : "release";
-        this.targetVersions = new ArrayList<>();
+        this.targetVersions = new HashSet<>();
         targetVersions.add((String) project.property(Constants.MINECRAFT_VERSION_KEY));
         for (String gameVersion : ((String) project.property("extra_game_versions")).split(",")) {
             if (!"".equals(gameVersion)) {
