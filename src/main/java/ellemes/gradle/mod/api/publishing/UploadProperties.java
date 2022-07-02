@@ -30,7 +30,7 @@ public class UploadProperties {
 
     public UploadProperties(Project project, String repoBaseUrl) {
         this.project = project;
-        this.version = (String) project.property("mod_version");
+        this.version = (String) project.property(Constants.MOD_VERSION_KEY);
         this.releaseType = version.contains("alpha") ? "alpha" : version.contains("beta") ? "beta" : "release";
         this.targetVersions = new HashSet<>();
         targetVersions.add((String) project.property(Constants.MINECRAFT_VERSION_KEY));

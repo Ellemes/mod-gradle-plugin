@@ -64,14 +64,14 @@ public final class GradlePlugin implements Plugin<Project> {
         target.apply(Map.of("plugin", "architectury-plugin"));
         minecraftVersion = (String) target.getExtensions().getExtraProperties().get(Constants.MINECRAFT_VERSION_KEY);
         if (minecraftVersion == null) {
-            throw new IllegalStateException("Property " + Constants.MINECRAFT_VERSION_KEY + " is missing.");
+            throw GradlePlugin.missingProperty(Constants.MINECRAFT_VERSION_KEY);
         }
-        javaVersion = JavaVersion.toVersion(target.getExtensions().getExtraProperties().get("java_version"));
+        javaVersion = JavaVersion.toVersion(target.getExtensions().getExtraProperties().get(Constants.JAVA_VERSION_KEY));
         if (javaVersion == null) {
-            throw new IllegalStateException("Property java_version is missing.");
+            throw GradlePlugin.missingProperty(Constants.JAVA_VERSION_KEY);
         }
         target.getExtensions().configure(ArchitectPluginExtension.class, extension -> extension.setMinecraft(minecraftVersion));
-        Task buildTask = target.task("buildMod");
+        Task buildTask = target.task(Constants.MOD_BUILD_TASK);
         Task releaseTask = target.getTasks().create(Constants.MOD_UPLOAD_TASK, ReleaseModTask.class, target.getProjectDir());
         target.getGradle().getTaskGraph().whenReady(graph -> {
             for (Task task : graph.getAllTasks()) {
@@ -88,7 +88,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 this.registerExtension(templateProject);
                 project.apply(Map.of("plugin", "java-library"));
                 project.setGroup("ellemes");
-                project.setVersion(templateProject.property("mod_version") + "+" + minecraftVersion);
+                project.setVersion(templateProject.property(Constants.MOD_VERSION_KEY) + "+" + minecraftVersion);
                 project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().set(templateProject.<String>property("archives_base_name"));
                 project.setBuildDir(project.getRootDir().toPath().resolve("build/" + project.getName()));
 
@@ -155,7 +155,6 @@ public final class GradlePlugin implements Plugin<Project> {
                     ((Jar) project.getTasks().getByName("jar")).getArchiveClassifier().set("dev");
 
                     ShadowJar shadowJar = (ShadowJar) project.getTasks().getByName("shadowJar");
-                    shadowJar.exclude("architectury.common.json"); // todo: useless?
                     shadowJar.setConfigurations(List.of(shadowCommonConfiguration));
                     shadowJar.getArchiveClassifier().set("dev-shadow");
 
@@ -176,7 +175,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     //noinspection UnstableApiUsage
                     project.getTasks().withType(ProcessResources.class).configureEach(task -> {
                         HashMap<String, String> props = new HashMap<>();
-                        props.put("version", templateProject.property("mod_version"));
+                        props.put("version", templateProject.property(Constants.MOD_VERSION_KEY));
                         if (project.hasProperty("template.extraModInfoReplacements")) {
                             Map<String, String> extraProps = templateProject.property("template.extraModInfoReplacements");
                             if (extraProps != null) {
@@ -233,7 +232,7 @@ public final class GradlePlugin implements Plugin<Project> {
                         String projectDisplayName = GradlePlugin.capitalize(project.getName());
                         publications.create("maven" + projectDisplayName, MavenPublication.class, publication -> {
                             publication.setArtifactId(project.property("template.maven_artifact_id") + "-" + minecraftVersion +  "-" + project.getName());
-                            publication.setVersion(templateProject.property("mod_version"));
+                            publication.setVersion(templateProject.property(Constants.MOD_VERSION_KEY));
                             var minifyJar = project.getTasks().getByName("minJar");
                             publication.artifact(minifyJar, it -> {
                                 it.builtBy(minifyJar);
@@ -244,6 +243,10 @@ public final class GradlePlugin implements Plugin<Project> {
                 }
             }
         });
+    }
+
+    private static IllegalStateException missingProperty(String property) {
+        return new IllegalStateException("Missing property: " + property);
     }
 
     private static String capitalize(String name) {
@@ -287,7 +290,7 @@ public final class GradlePlugin implements Plugin<Project> {
         ArchitectPluginExtension extension = project.getExtensions().getByType(ArchitectPluginExtension.class);
         switch (platform) {
             case COMMON -> {
-                extension.common(((String) project.getParent().property("template.enabled_platforms")).split(",")); // todo: fixme
+                extension.common(((String) project.property("template.enabled_platforms")).split(",")); // todo: fixme
                 extension.setInjectInjectables(false);
             }
             case FABRIC, QUILT, FORGE -> extension.loader(platform.getName());
@@ -312,7 +315,7 @@ public final class GradlePlugin implements Plugin<Project> {
                         settings.client();
                         settings.vmArg("-Dfabric-api.datagen");
                         settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/generated/resources"));
-                        settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
+                        settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property(Constants.MOD_ID_KEY));
                         settings.runDir("build/" + project.getName() + "-datagen");
                     });
                 }
@@ -346,7 +349,7 @@ public final class GradlePlugin implements Plugin<Project> {
                         settings.client();
                         settings.vmArg("-Dfabric-api.datagen");
                         settings.vmArg("-Dfabric-api.datagen.output-dir=" + project.file("src/generated/resources"));
-                        settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property("mod_id"));
+                        settings.vmArg("-Dfabric-api.datagen.datagen.modid=" + templateProject.property(Constants.MOD_ID_KEY));
                         settings.runDir("build/" + project.getName() + "-datagen");
                     });
                 }
@@ -364,7 +367,7 @@ public final class GradlePlugin implements Plugin<Project> {
             if (templateProject.usesDataGen()) {
                 extension.forge(forgeExtensionAPI -> {
                     forgeExtensionAPI.dataGen(dataGenConsumer -> {
-                        dataGenConsumer.mod(templateProject.<String>property("mod_id"));
+                        dataGenConsumer.mod(templateProject.<String>property(Constants.MOD_ID_KEY));
                     });
                 });
             }
