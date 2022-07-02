@@ -1,5 +1,7 @@
 package ellemes.gradle.mod.impl;
 
+import java.util.Locale;
+
 public final class Constants {
     public static final String JETBRAINS_ANNOTATIONS_VERSION = "@JETBRAINS_ANNOTATIONS_VERSION@";
 
@@ -21,5 +23,9 @@ public final class Constants {
 
     private Constants() {
         throw new IllegalStateException("Should not instantiate utility class.");
+    }
+
+    public static String titleCase(String input) {
+        return input.substring(0, 1).toUpperCase(Locale.ROOT) + input.substring(1);
     }
 }

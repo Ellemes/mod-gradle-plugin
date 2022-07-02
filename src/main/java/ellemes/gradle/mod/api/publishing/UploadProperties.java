@@ -67,10 +67,6 @@ public class UploadProperties {
         }
     }
 
-    private static String titleCase(String input) {
-        return input.substring(0, 1).toUpperCase() + input.substring(1);
-    }
-
     public void configureCurseForge(Action<CurseProject> action) {
         CurseExtension extension = project.getExtensions().getByType(CurseExtension.class);
 
@@ -88,13 +84,13 @@ public class UploadProperties {
             p.setReleaseType(releaseType);
             Task minJar = project.getTasks().getByName("minJar");
             p.mainArtifact(minJar, new ActionClosure<CurseArtifact>(this, a -> {
-                a.setDisplayName(UploadProperties.titleCase(project.getName()) + " " + version);
+                a.setDisplayName(Constants.titleCase(project.getName()) + " " + version);
                 a.setArtifact(minJar);
             }));
             p.setChangelogType("markdown");
             p.setChangelog(changelog);
             List<Object> gameVersions = new ArrayList<>();
-            gameVersions.add(UploadProperties.titleCase(project.getName()));
+            gameVersions.add(Constants.titleCase(project.getName()));
             gameVersions.add("Java " + project.getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility().getMajorVersion());
             gameVersions.addAll(targetVersions);
             p.setGameVersionStrings(gameVersions);
@@ -112,7 +108,7 @@ public class UploadProperties {
         extension.getProjectId().set((String) project.property("modrinth_project_id"));
         extension.getVersionType().set(releaseType);
         extension.getVersionNumber().set(version + "+" + project.getName());
-        extension.getVersionName().set(UploadProperties.titleCase(project.getName()) + " " + version);
+        extension.getVersionName().set(Constants.titleCase(project.getName()) + " " + version);
         extension.getUploadFile().set(project.getTasks().getByName("minJar"));
         extension.getChangelog().set(changelog);
         extension.getGameVersions().set(targetVersions);

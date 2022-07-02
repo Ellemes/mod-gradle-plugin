@@ -50,10 +50,6 @@ public final class GradlePlugin implements Plugin<Project> {
     private String minecraftVersion;
     private JavaVersion javaVersion;
 
-    private void registerExtension(TemplateProject project) {
-        project.getProject().getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(project, helper));
-    }
-
     @Override
     public void apply(@NotNull Project target) {
         this.validateGradleVersion(target);
@@ -85,7 +81,7 @@ public final class GradlePlugin implements Plugin<Project> {
                 TemplateProject templateProject = new TemplateProject(project);
                 Platform platform = templateProject.getPlatform();
                 project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_PROPERTY_KEY, templateProject);
-                this.registerExtension(templateProject);
+                project.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(templateProject, helper));
                 project.apply(Map.of("plugin", "java-library"));
                 project.setGroup("ellemes");
                 project.setVersion(templateProject.property(Constants.MOD_VERSION_KEY) + "+" + minecraftVersion);
@@ -201,7 +197,7 @@ public final class GradlePlugin implements Plugin<Project> {
                         project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
                     }
                     ConfigurationContainer configurations = project.getConfigurations();
-                    String projectDisplayName = GradlePlugin.capitalize(project.getName());
+                    String projectDisplayName = Constants.titleCase(project.getName());
                     configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
 
                     DependencyHandler dependencies = project.getDependencies();
@@ -229,7 +225,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     project.apply(Map.of("plugin", "maven-publish"));
 
                     project.getExtensions().getByType(PublishingExtension.class).publications(publications -> {
-                        String projectDisplayName = GradlePlugin.capitalize(project.getName());
+                        String projectDisplayName = Constants.titleCase(project.getName());
                         publications.create("maven" + projectDisplayName, MavenPublication.class, publication -> {
                             publication.setArtifactId(project.property("template.maven_artifact_id") + "-" + minecraftVersion +  "-" + project.getName());
                             publication.setVersion(templateProject.property(Constants.MOD_VERSION_KEY));
@@ -247,10 +243,6 @@ public final class GradlePlugin implements Plugin<Project> {
 
     private static IllegalStateException missingProperty(String property) {
         return new IllegalStateException("Missing property: " + property);
-    }
-
-    private static String capitalize(String name) {
-        return name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
     }
 
     private void applyCommon(TemplateProject templateProject, Project target) {
