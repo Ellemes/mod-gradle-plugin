@@ -1,7 +1,7 @@
 package ellemes.gradle.mod.api.publishing;
 
 import com.modrinth.minotaur.ModrinthExtension;
-import ellemes.gradle.mod.api.ActionClosure;
+import ellemes.gradle.mod.impl.ActionClosure;
 import ellemes.gradle.mod.impl.Constants;
 import me.hypherionmc.cursegradle.CurseArtifact;
 import me.hypherionmc.cursegradle.CurseExtension;
