@@ -1,10 +1,10 @@
 package ellemes.gradle.mod.impl.ext;
 
+import ellemes.gradle.mod.api.ext.ModGradleExtension;
 import ellemes.gradle.mod.api.helpers.FabricApiHelper;
 import ellemes.gradle.mod.api.helpers.QslHelper;
-import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper;
-import ellemes.gradle.mod.api.ext.ModGradleExtension;
 import ellemes.gradle.mod.impl.Constants;
+import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import ellemes.gradle.mod.impl.misc.Platform;
 import ellemes.gradle.mod.impl.misc.TemplateProject;
 import org.gradle.api.Project;

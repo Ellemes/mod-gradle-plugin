@@ -2,10 +2,10 @@ package ellemes.gradle.mod.impl.dependency;
 
 import ellemes.gradle.mod.impl.dependency.local.CachedVersionCoordinates;
 import ellemes.gradle.mod.impl.dependency.local.LibraryXml;
-import ellemes.gradle.mod.impl.dependency.maven.POM;
-import ellemes.gradle.mod.impl.dependency.maven.SnapshotVersion;
 import ellemes.gradle.mod.impl.dependency.maven.Dependency;
 import ellemes.gradle.mod.impl.dependency.maven.MavenMetadata;
+import ellemes.gradle.mod.impl.dependency.maven.POM;
+import ellemes.gradle.mod.impl.dependency.maven.SnapshotVersion;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
 

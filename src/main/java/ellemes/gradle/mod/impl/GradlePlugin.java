@@ -2,6 +2,8 @@ package ellemes.gradle.mod.impl;
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar;
 import dev.architectury.plugin.ArchitectPluginExtension;
+import ellemes.gradle.mod.api.ext.ModGradleExtension;
+import ellemes.gradle.mod.api.task.MinifyJsonTask;
 import ellemes.gradle.mod.impl.dependency.DependencyDownloadHelper;
 import ellemes.gradle.mod.impl.ext.ModGradleExtensionImpl;
 import ellemes.gradle.mod.impl.misc.Platform;
@@ -9,8 +11,6 @@ import ellemes.gradle.mod.impl.misc.TemplateProject;
 import ellemes.gradle.mod.impl.task.ReleaseModTask;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.fabricmc.loom.task.RemapJarTask;
-import ellemes.gradle.mod.api.ext.ModGradleExtension;
-import ellemes.gradle.mod.api.task.MinifyJsonTask;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
