@@ -8,10 +8,12 @@ public final class Constants {
     public static final String REQUIRED_GRADLE_VERSION = "@REQUIRED_GRADLE_VERSION@";
 
     public static final String TEMPLATE_PLATFORM_KEY = "template.platform";
-    public static final String TEMPLATE_COMMON_PROJECT_KEY = "template.commonProject";
+    public static final String TEMPLATE_COMMON_PROJECT_KEY = "template.common_projects";
     public static final String TEMPLATE_ENABLED_PLATFORMS_KEY = "template.enabled_platforms";
+    public static final String TEMPLATE_COPY_AW_KEY = "template.copy_aw_from";
 
     public static final String TEMPLATE_PROPERTY_KEY = "template_project";
+    public static final String ACCESS_WIDENER_PATH_KEY = "access_widener_path";
     public static final String MINECRAFT_VERSION_KEY = "minecraft_version";
     public static final String JAVA_VERSION_KEY = "java_version";
     public static final String MOD_ID_KEY = "mod_id";

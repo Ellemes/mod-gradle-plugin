@@ -27,6 +27,7 @@ import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
@@ -34,11 +35,14 @@ import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 // Acknowledgements:
 //  Common project inspired by https://github.com/samolego/MultiLoaderTemplate
@@ -87,16 +91,21 @@ public final class GradlePlugin implements Plugin<Project> {
         // Set the common project for every template project.
         for (TemplateProject child : children) {
             if (child.getProject().hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
-                TemplateProject commonTemplateProject = (TemplateProject) target.getChildProjects().get(child.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY)).property(Constants.TEMPLATE_PROPERTY_KEY);
-                child.setCommonProject(commonTemplateProject);
+                String[] commonProjectNames = child.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY).split(",");
+                Map<String, Project> childProjects = target.getChildProjects();
+                Set<TemplateProject> commonProjects = Arrays.stream(commonProjectNames)
+                                                            .map(childProjects::get)
+                                                            .map(project -> (TemplateProject) project.property(Constants.TEMPLATE_PROPERTY_KEY))
+                                                            .collect(Collectors.toSet());
+                child.setCommonProjects(commonProjects);
             }
         }
 
         // Sort children such that commonest project is last.
         children.sort((a, b) -> {
-            if (a.getCommonProject() == b) {
+            if (a.containsCommonProject(b)) {
                 return -1;
-            } else if (b.getCommonProject() == a) {
+            } else if (b.containsCommonProject(a)) {
                 return 1;
             } else {
                 return 0;
@@ -105,12 +114,10 @@ public final class GradlePlugin implements Plugin<Project> {
 
         // Create the enabled platforms property for common projects.
         for (TemplateProject child : children) {
-            child.ifCommonProjectPresent(common -> {
+            child.ifCommonProjectsPresent(common -> {
                 HashSet<String> enabledPlatforms = common.property(Constants.TEMPLATE_ENABLED_PLATFORMS_KEY);
                 Platform childPlatform = child.getPlatform();
-                if (childPlatform == Platform.COMMON) {
-                    enabledPlatforms.addAll(child.property(Constants.TEMPLATE_ENABLED_PLATFORMS_KEY));
-                } else {
+                if (childPlatform != Platform.COMMON) {
                     enabledPlatforms.add(childPlatform.getName());
                 }
             });
@@ -190,7 +197,7 @@ public final class GradlePlugin implements Plugin<Project> {
             GradlePlugin.applyForge(templateProject);
         }
 
-        templateProject.ifCommonProjectPresent(common -> {
+        if (templateProject.hasCommonProjects()) {
             project.apply(Map.of("plugin", "com.github.johnrengelman.shadow"));
             ConfigurationContainer configurations = project.getConfigurations();
             Configuration commonConfiguration = configurations.create("common");
@@ -214,7 +221,7 @@ public final class GradlePlugin implements Plugin<Project> {
 
             AdhocComponentWithVariants variants = (AdhocComponentWithVariants) project.getComponents().getByName("java");
             variants.withVariantsFromConfiguration(project.getConfigurations().getByName("shadowRuntimeElements"), ConfigurationVariantDetails::skip);
-        });
+        }
 
         String modInfoFile = platform.getModInfoFile();
         if (modInfoFile != null) {
@@ -238,25 +245,30 @@ public final class GradlePlugin implements Plugin<Project> {
     private static void postApplyArchPlugin(TemplateProject templateProject, Task buildTask) {
         Project project = templateProject.getProject();
         GradlePlugin.applyArchPlugin(templateProject);
-        templateProject.ifCommonProjectPresent(common -> {
-            if (common.getProject().hasProperty("access_widener_path")) {
-                project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getProject().getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
+        templateProject.ifCommonProjectsPresent(common -> {
+            if (project.hasProperty(Constants.TEMPLATE_COPY_AW_KEY)) {
+                if (common.getProject().getName().equals(templateProject.property(Constants.TEMPLATE_COPY_AW_KEY)) && common.getProject().hasProperty(Constants.ACCESS_WIDENER_PATH_KEY)) {
+                    project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getProject().getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
+                }
             }
             ConfigurationContainer configurations = project.getConfigurations();
             String projectDisplayName = Constants.titleCase(project.getName());
-            configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
-
             DependencyHandler dependencies = project.getDependencies();
             ModuleDependency commonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getProject().getPath(), "configuration", "namedElements"))).setTransitive(false);
-            ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getProject().getPath(), "configuration", "transformProduction"+projectDisplayName))).setTransitive(false);
-            dependencies.add("common", commonDep);
-            dependencies.add("shadowCommon", shadowCommonDep);
+            if (templateProject.getPlatform() == Platform.COMMON) {
+                dependencies.add("compileClasspath", commonDep);
+            } else {
+                configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
+                ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getProject().getPath(), "configuration", "transformProduction" + projectDisplayName))).setTransitive(false);
+                dependencies.add("common", commonDep);
+                dependencies.add("shadowCommon", shadowCommonDep);
+            }
         });
 
         if (templateProject.producesReleaseArtifact()) {
             buildTask.dependsOn(project.getTasks().getByName("build"));
 
-            var minJarTask = project.getTasks().register("minJar", MinifyJsonTask.class, task -> {
+            TaskProvider<MinifyJsonTask> minJarTask = project.getTasks().register("minJar", MinifyJsonTask.class, task -> {
                 Task remapJarTask = project.getTasks().getByName("remapJar");
                 task.getInput().set(remapJarTask.getOutputs().getFiles().getSingleFile());
                 task.getArchiveClassifier().set(project.getName());
@@ -420,7 +432,7 @@ public final class GradlePlugin implements Plugin<Project> {
                     container.named("data", settings -> {
                         settings.programArg("--existing");
                         settings.programArg(project.file("src/main/resources").getAbsolutePath());
-                        templateProject.ifCommonProjectPresent(commonProject -> {
+                        templateProject.ifCommonProjectsPresent(commonProject -> {
                             settings.programArg("--existing");
                             settings.programArg(commonProject.getProject().file("src/main/resources").getAbsolutePath());
                         });

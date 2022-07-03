@@ -3,11 +3,12 @@ package ellemes.gradle.mod.impl.misc;
 import ellemes.gradle.mod.impl.Constants;
 import org.gradle.api.Project;
 
+import java.util.Set;
 import java.util.function.Consumer;
 
 public final class TemplateProject {
     private final Project project;
-    private TemplateProject commonProject;
+    private Set<TemplateProject> commonProjects;
     private Boolean producesReleaseArtifact, producesMavenArtifact;
     private Boolean usesDataGen;
     private Platform platform;
@@ -48,17 +49,19 @@ public final class TemplateProject {
         return platform;
     }
 
-    public void setCommonProject(TemplateProject commonProject) {
-        if (this.commonProject == null) {
-            this.commonProject = commonProject;
+    public void setCommonProjects(Set<TemplateProject> commonProjects) {
+        if (this.commonProjects == null) {
+            this.commonProjects = commonProjects;
         } else {
-            throw new IllegalStateException("Tried setting common project twice for " + project.getName());
+            throw new IllegalStateException("Tried setting common projects twice for " + project.getName());
         }
     }
 
-    public void ifCommonProjectPresent(Consumer<TemplateProject> consumer) {
-        if (commonProject != null) {
-            consumer.accept(commonProject);
+    public void ifCommonProjectsPresent(Consumer<TemplateProject> consumer) {
+        if (commonProjects != null) {
+            for (TemplateProject commonProject : commonProjects) {
+                consumer.accept(commonProject);
+            }
         }
     }
 
@@ -67,7 +70,11 @@ public final class TemplateProject {
         return (T) project.property(name);
     }
 
-    public TemplateProject getCommonProject() {
-        return commonProject;
+    public boolean containsCommonProject(TemplateProject project) {
+        return this.hasCommonProjects() && commonProjects.contains(project);
+    }
+
+    public boolean hasCommonProjects() {
+        return commonProjects != null;
     }
 }
