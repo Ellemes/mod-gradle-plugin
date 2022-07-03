@@ -33,36 +33,27 @@ import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 
-import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 // Acknowledgements:
 //  Common project inspired by https://github.com/samolego/MultiLoaderTemplate
 @SuppressWarnings("unused")
 public final class GradlePlugin implements Plugin<Project> {
-    private final AtomicBoolean validatedArchLoomVersion = new AtomicBoolean(false);
-    private final AtomicBoolean validatedArchPluginVersion = new AtomicBoolean(false);
-    private DependencyDownloadHelper helper;
-    private String minecraftVersion;
-    private JavaVersion javaVersion;
-
     @Override
     public void apply(@NotNull Project target) {
         this.validateGradleVersion(target);
-        try {
-            helper = new DependencyDownloadHelper(target.getProjectDir().toPath().resolve(".gradle/mod-cache/"));
-        } catch (URISyntaxException ignored) {
-        }
+        DependencyDownloadHelper helper = new DependencyDownloadHelper(target.getProjectDir().toPath().resolve(".gradle/mod-cache/"));
         target.apply(Map.of("plugin", "architectury-plugin"));
-        minecraftVersion = (String) target.getExtensions().getExtraProperties().get(Constants.MINECRAFT_VERSION_KEY);
+        String minecraftVersion = (String) target.property(Constants.MINECRAFT_VERSION_KEY);
         if (minecraftVersion == null) {
             throw GradlePlugin.missingProperty(Constants.MINECRAFT_VERSION_KEY);
         }
-        javaVersion = JavaVersion.toVersion(target.getExtensions().getExtraProperties().get(Constants.JAVA_VERSION_KEY));
+        JavaVersion javaVersion = JavaVersion.toVersion(target.property(Constants.JAVA_VERSION_KEY));
         if (javaVersion == null) {
             throw GradlePlugin.missingProperty(Constants.JAVA_VERSION_KEY);
         }
@@ -76,180 +67,234 @@ public final class GradlePlugin implements Plugin<Project> {
                 }
             }
         });
+
+        final List<TemplateProject> children = new ArrayList<>();
+
+        // Give every template project a TemplateProject class.
         target.subprojects(project -> {
             if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
                 TemplateProject templateProject = new TemplateProject(project);
-                Platform platform = templateProject.getPlatform();
                 project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_PROPERTY_KEY, templateProject);
-                project.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(templateProject, helper));
-                project.apply(Map.of("plugin", "java-library"));
-                project.setGroup("ellemes");
-                project.setVersion(templateProject.property(Constants.MOD_VERSION_KEY) + "+" + minecraftVersion);
-                project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().set(templateProject.<String>property("archives_base_name"));
-                project.setBuildDir(project.getRootDir().toPath().resolve("build/" + project.getName()));
 
-                project.getExtensions().configure(JavaPluginExtension.class, extension -> {
-                    extension.setSourceCompatibility(javaVersion);
-                    extension.setTargetCompatibility(javaVersion);
-                });
-
-                project.getTasks().withType(JavaCompile.class).configureEach(task -> {
-                    CompileOptions options = task.getOptions();
-                    options.setEncoding("UTF-8");
-                    options.getRelease().set(javaVersion.ordinal() + 1);
-                });
-
-                project.getRepositories().maven(repo -> {
-                    repo.setName("Unofficial CurseForge Maven");
-                    repo.setUrl("https://cursemaven.com");
-                    repo.content(descriptor -> descriptor.includeGroup("curse.maven"));
-                });
-
-                project.getRepositories().maven(repo -> {
-                    repo.setName("Modrinth Maven");
-                    repo.setUrl("https://api.modrinth.com/maven");
-                    repo.content(descriptor -> descriptor.includeGroup("maven.modrinth"));
-                });
-
-                project.getRepositories().mavenLocal();
-
-                project.getDependencies().add("compileOnly", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
-
-                if (templateProject.usesDataGen()) {
-                    if (platform != Platform.FORGE) { // Arch does this for forge...
-                        SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
-                        sourceSets.named("main", sourceSet -> sourceSet.getResources().srcDir("src/generated/resources"));
-                    }
-                    project.getTasks().getByName("jar", task -> ((Jar) task).exclude("**/datagen"));
+                if (templateProject.getPlatform() == Platform.COMMON) {
+                    project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_ENABLED_PLATFORMS_KEY, new HashSet<String>());
                 }
 
-                if (templateProject.producesReleaseArtifact()) {
-                    project.apply(Map.of("plugin", "com.modrinth.minotaur"));
-                    project.apply(Map.of("plugin", "me.hypherionmc.cursegradle"));
-                    var projectReleaseTask = project.task(Constants.MOD_UPLOAD_TASK);
-                    releaseTask.dependsOn(projectReleaseTask);
-                }
-
-                if (platform == Platform.COMMON) {
-                    this.applyCommon(templateProject, target);
-                } else if (platform == Platform.FABRIC) {
-                    this.applyFabric(templateProject, target);
-                } else if (platform == Platform.QUILT) {
-                    this.applyQuilt(templateProject, target);
-                } else if (platform == Platform.FORGE) {
-                    this.applyForge(templateProject, target);
-                }
-
-                templateProject.ifCommonProjectPresent(common -> {
-                    project.apply(Map.of("plugin", "com.github.johnrengelman.shadow"));
-                    ConfigurationContainer configurations = project.getConfigurations();
-                    Configuration commonConfiguration = configurations.create("common");
-                    Configuration shadowCommonConfiguration = configurations.create("shadowCommon");
-                    configurations.named("compileClasspath").get().extendsFrom(commonConfiguration);
-                    configurations.named("runtimeClasspath").get().extendsFrom(commonConfiguration);
-
-                    ((Jar) project.getTasks().getByName("jar")).getArchiveClassifier().set("dev");
-
-                    ShadowJar shadowJar = (ShadowJar) project.getTasks().getByName("shadowJar");
-                    shadowJar.setConfigurations(List.of(shadowCommonConfiguration));
-                    shadowJar.getArchiveClassifier().set("dev-shadow");
-
-                    RemapJarTask remapJarTask = (RemapJarTask) project.getTasks().getByName("remapJar");
-                    if (platform != Platform.FORGE) {
-                        remapJarTask.getInjectAccessWidener().set(true);
-                    }
-                    remapJarTask.getInputFile().set(shadowJar.getArchiveFile());
-                    remapJarTask.dependsOn(shadowJar);
-                    remapJarTask.getArchiveClassifier().set("fat");
-
-                    AdhocComponentWithVariants variants = (AdhocComponentWithVariants) project.getComponents().getByName("java");
-                    variants.withVariantsFromConfiguration(project.getConfigurations().getByName("shadowRuntimeElements"), ConfigurationVariantDetails::skip);
-                });
-
-                String modInfoFile = platform.getModInfoFile();
-                if (modInfoFile != null) {
-                    //noinspection UnstableApiUsage
-                    project.getTasks().withType(ProcessResources.class).configureEach(task -> {
-                        HashMap<String, String> props = new HashMap<>();
-                        props.put("version", templateProject.property(Constants.MOD_VERSION_KEY));
-                        if (project.hasProperty("template.extraModInfoReplacements")) {
-                            Map<String, String> extraProps = templateProject.property("template.extraModInfoReplacements");
-                            if (extraProps != null) {
-                                props.putAll(extraProps);
-                            }
-                        }
-                        task.getInputs().properties(props);
-                        task.filesMatching(modInfoFile, details -> details.expand(props));
-                        task.exclude(".cache/*");
-
-                        //task.setDuplicatesStrategy(DuplicatesStrategy.WARN);
-                    });
-                }
+                children.add(templateProject);
             }
         });
 
-        target.subprojects(project -> {
-            if (project.hasProperty(Constants.TEMPLATE_PLATFORM_KEY)) {
-                TemplateProject templateProject = new TemplateProject(project);
-                this.applyArchPlugin(project, templateProject.getPlatform());
-                templateProject.ifCommonProjectPresent(common -> {
-                    if (common.hasProperty("access_widener_path")) {
-                        project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
-                    }
-                    ConfigurationContainer configurations = project.getConfigurations();
-                    String projectDisplayName = Constants.titleCase(project.getName());
-                    configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
+        // Set the common project for every template project.
+        for (TemplateProject child : children) {
+            if (child.getProject().hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
+                TemplateProject commonTemplateProject = (TemplateProject) target.getChildProjects().get(child.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY)).property(Constants.TEMPLATE_PROPERTY_KEY);
+                child.setCommonProject(commonTemplateProject);
+            }
+        }
 
-                    DependencyHandler dependencies = project.getDependencies();
-                    ModuleDependency commonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "namedElements"))).setTransitive(false);
-                    ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getPath(), "configuration", "transformProduction"+projectDisplayName))).setTransitive(false);
-                    dependencies.add("common", commonDep);
-                    dependencies.add("shadowCommon", shadowCommonDep);
-                });
-
-                if (templateProject.producesReleaseArtifact()) {
-                    buildTask.dependsOn(project.getTasks().getByName("build"));
-
-                    var minJarTask = project.getTasks().register("minJar", MinifyJsonTask.class, task -> {
-                        Task remapJarTask = project.getTasks().getByName("remapJar");
-                        task.getInput().set(remapJarTask.getOutputs().getFiles().getSingleFile());
-                        task.getArchiveClassifier().set(project.getName());
-                        task.from(project.getRootDir().toPath().resolve("LICENSE"));
-                        task.dependsOn(remapJarTask);
-                    });
-
-                    project.getTasks().getByName("build").dependsOn(minJarTask);
-                }
-
-                if (templateProject.producesMavenArtifact()) {
-                    project.apply(Map.of("plugin", "maven-publish"));
-
-                    project.getExtensions().getByType(PublishingExtension.class).publications(publications -> {
-                        String projectDisplayName = Constants.titleCase(project.getName());
-                        publications.create("maven" + projectDisplayName, MavenPublication.class, publication -> {
-                            publication.setArtifactId(project.property("template.maven_artifact_id") + "-" + minecraftVersion +  "-" + project.getName());
-                            publication.setVersion(templateProject.property(Constants.MOD_VERSION_KEY));
-                            var minifyJar = project.getTasks().getByName("minJar");
-                            publication.artifact(minifyJar, it -> {
-                                it.builtBy(minifyJar);
-                                it.setClassifier("");
-                            });
-                        });
-                    });
-                }
+        // Sort children such that commonest project is last.
+        children.sort((a, b) -> {
+            if (a.getCommonProject() == b) {
+                return -1;
+            } else if (b.getCommonProject() == a) {
+                return 1;
+            } else {
+                return 0;
             }
         });
+
+        // Create the enabled platforms property for common projects.
+        for (TemplateProject child : children) {
+            child.ifCommonProjectPresent(common -> {
+                HashSet<String> enabledPlatforms = common.property(Constants.TEMPLATE_ENABLED_PLATFORMS_KEY);
+                Platform childPlatform = child.getPlatform();
+                if (childPlatform == Platform.COMMON) {
+                    enabledPlatforms.addAll(child.property(Constants.TEMPLATE_ENABLED_PLATFORMS_KEY));
+                } else {
+                    enabledPlatforms.add(childPlatform.getName());
+                }
+            });
+        }
+
+        // Reverse the children so that common projects are configured first.
+        Collections.reverse(children);
+
+        for (TemplateProject child : children) {
+            GradlePlugin.preApplyArchPlugin(child, helper, javaVersion, releaseTask);
+        }
+
+        for (TemplateProject child : children) {
+            GradlePlugin.postApplyArchPlugin(child, buildTask);
+        }
     }
+
+    private static void preApplyArchPlugin(TemplateProject templateProject, DependencyDownloadHelper helper, JavaVersion javaVersion, Task releaseTask) {
+        Project project = templateProject.getProject();
+        Platform platform = templateProject.getPlatform();
+        project.getExtensions().getExtraProperties().set(Constants.TEMPLATE_PROPERTY_KEY, templateProject);
+        project.getExtensions().add(ModGradleExtension.class, "mod", new ModGradleExtensionImpl(templateProject, helper));
+        project.apply(Map.of("plugin", "java-library"));
+        project.setGroup("ellemes");
+        project.setVersion(templateProject.property(Constants.MOD_VERSION_KEY) + "+" + templateProject.property(Constants.MINECRAFT_VERSION_KEY));
+        project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().set(templateProject.<String>property("archives_base_name"));
+        project.setBuildDir(project.getRootDir().toPath().resolve("build/" + project.getName()));
+
+        project.getExtensions().configure(JavaPluginExtension.class, extension -> {
+            extension.setSourceCompatibility(javaVersion);
+            extension.setTargetCompatibility(javaVersion);
+        });
+
+        project.getTasks().withType(JavaCompile.class).configureEach(task -> {
+            CompileOptions options = task.getOptions();
+            options.setEncoding("UTF-8");
+            options.getRelease().set(javaVersion.ordinal() + 1);
+        });
+
+        project.getRepositories().maven(repo -> {
+            repo.setName("Unofficial CurseForge Maven");
+            repo.setUrl("https://cursemaven.com");
+            repo.content(descriptor -> descriptor.includeGroup("curse.maven"));
+        });
+
+        project.getRepositories().maven(repo -> {
+            repo.setName("Modrinth Maven");
+            repo.setUrl("https://api.modrinth.com/maven");
+            repo.content(descriptor -> descriptor.includeGroup("maven.modrinth"));
+        });
+
+        project.getRepositories().mavenLocal();
+
+        project.getDependencies().add("compileOnly", "org.jetbrains:annotations:" + Constants.JETBRAINS_ANNOTATIONS_VERSION);
+
+        if (templateProject.usesDataGen()) {
+            if (platform != Platform.FORGE) { // Arch does this for forge...
+                SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+                sourceSets.named("main", sourceSet -> sourceSet.getResources().srcDir("src/generated/resources"));
+            }
+            project.getTasks().getByName("jar", task -> ((Jar) task).exclude("**/datagen"));
+        }
+
+        if (templateProject.producesReleaseArtifact()) {
+            project.apply(Map.of("plugin", "com.modrinth.minotaur"));
+            project.apply(Map.of("plugin", "me.hypherionmc.cursegradle"));
+            releaseTask.dependsOn(project.task(Constants.MOD_UPLOAD_TASK));
+        }
+
+        if (platform == Platform.COMMON) {
+            GradlePlugin.applyCommon(templateProject);
+        } else if (platform == Platform.FABRIC) {
+            GradlePlugin.applyFabric(templateProject);
+        } else if (platform == Platform.QUILT) {
+            GradlePlugin.applyQuilt(templateProject);
+        } else if (platform == Platform.FORGE) {
+            GradlePlugin.applyForge(templateProject);
+        }
+
+        templateProject.ifCommonProjectPresent(common -> {
+            project.apply(Map.of("plugin", "com.github.johnrengelman.shadow"));
+            ConfigurationContainer configurations = project.getConfigurations();
+            Configuration commonConfiguration = configurations.create("common");
+            Configuration shadowCommonConfiguration = configurations.create("shadowCommon");
+            configurations.named("compileClasspath").get().extendsFrom(commonConfiguration);
+            configurations.named("runtimeClasspath").get().extendsFrom(commonConfiguration);
+
+            ((Jar) project.getTasks().getByName("jar")).getArchiveClassifier().set("dev");
+
+            ShadowJar shadowJar = (ShadowJar) project.getTasks().getByName("shadowJar");
+            shadowJar.setConfigurations(List.of(shadowCommonConfiguration));
+            shadowJar.getArchiveClassifier().set("dev-shadow");
+
+            RemapJarTask remapJarTask = (RemapJarTask) project.getTasks().getByName("remapJar");
+            if (platform != Platform.FORGE) {
+                remapJarTask.getInjectAccessWidener().set(true);
+            }
+            remapJarTask.getInputFile().set(shadowJar.getArchiveFile());
+            remapJarTask.dependsOn(shadowJar);
+            remapJarTask.getArchiveClassifier().set("fat");
+
+            AdhocComponentWithVariants variants = (AdhocComponentWithVariants) project.getComponents().getByName("java");
+            variants.withVariantsFromConfiguration(project.getConfigurations().getByName("shadowRuntimeElements"), ConfigurationVariantDetails::skip);
+        });
+
+        String modInfoFile = platform.getModInfoFile();
+        if (modInfoFile != null) {
+            //noinspection UnstableApiUsage
+            project.getTasks().withType(ProcessResources.class).configureEach(task -> {
+                HashMap<String, String> props = new HashMap<>();
+                props.put("version", templateProject.property(Constants.MOD_VERSION_KEY));
+                if (project.hasProperty("template.extraModInfoReplacements")) {
+                    Map<String, String> extraProps = templateProject.property("template.extraModInfoReplacements");
+                    if (extraProps != null) {
+                        props.putAll(extraProps);
+                    }
+                }
+                task.getInputs().properties(props);
+                task.filesMatching(modInfoFile, details -> details.expand(props));
+                task.exclude(".cache/*");
+            });
+        }
+    }
+
+    private static void postApplyArchPlugin(TemplateProject templateProject, Task buildTask) {
+        Project project = templateProject.getProject();
+        GradlePlugin.applyArchPlugin(templateProject);
+        templateProject.ifCommonProjectPresent(common -> {
+            if (common.getProject().hasProperty("access_widener_path")) {
+                project.getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath().set(common.getProject().getExtensions().getByType(LoomGradleExtensionAPI.class).getAccessWidenerPath());
+            }
+            ConfigurationContainer configurations = project.getConfigurations();
+            String projectDisplayName = Constants.titleCase(project.getName());
+            configurations.named("development" + projectDisplayName).get().extendsFrom(configurations.getByName("common"));
+
+            DependencyHandler dependencies = project.getDependencies();
+            ModuleDependency commonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getProject().getPath(), "configuration", "namedElements"))).setTransitive(false);
+            ModuleDependency shadowCommonDep = ((ProjectDependency) dependencies.project(Map.of("path", common.getProject().getPath(), "configuration", "transformProduction"+projectDisplayName))).setTransitive(false);
+            dependencies.add("common", commonDep);
+            dependencies.add("shadowCommon", shadowCommonDep);
+        });
+
+        if (templateProject.producesReleaseArtifact()) {
+            buildTask.dependsOn(project.getTasks().getByName("build"));
+
+            var minJarTask = project.getTasks().register("minJar", MinifyJsonTask.class, task -> {
+                Task remapJarTask = project.getTasks().getByName("remapJar");
+                task.getInput().set(remapJarTask.getOutputs().getFiles().getSingleFile());
+                task.getArchiveClassifier().set(project.getName());
+                task.from(project.getRootDir().toPath().resolve("LICENSE"));
+                task.dependsOn(remapJarTask);
+            });
+
+            project.getTasks().getByName("build").dependsOn(minJarTask);
+        }
+
+        if (templateProject.producesMavenArtifact()) {
+            project.apply(Map.of("plugin", "maven-publish"));
+
+            project.getExtensions().getByType(PublishingExtension.class).publications(publications -> {
+                String projectDisplayName = Constants.titleCase(project.getName());
+                publications.create("maven" + projectDisplayName, MavenPublication.class, publication -> {
+                    publication.setArtifactId(project.property("template.maven_artifact_id") + "-" + project.property(Constants.MINECRAFT_VERSION_KEY) +  "-" + project.getName());
+                    publication.setVersion(templateProject.property(Constants.MOD_VERSION_KEY));
+                    var minifyJar = project.getTasks().getByName("minJar");
+                    publication.artifact(minifyJar, it -> {
+                        it.builtBy(minifyJar);
+                        it.setClassifier("");
+                    });
+                });
+            });
+        }
+    }
+
 
     private static IllegalStateException missingProperty(String property) {
         return new IllegalStateException("Missing property: " + property);
     }
 
-    private void applyCommon(TemplateProject templateProject, Project target) {
+    private static void applyCommon(TemplateProject templateProject) {
         Project project = templateProject.getProject();
-        this.applyArchLoom(templateProject);
+        GradlePlugin.applyArchLoom(templateProject);
         DependencyHandler dependencies = project.getDependencies();
-        dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.rootProperty("fabric_loader_version"));
+        dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             extension.runs(container -> {
@@ -266,33 +311,35 @@ public final class GradlePlugin implements Plugin<Project> {
         });
     }
 
-    private void applyArchLoom(TemplateProject templateProject) {
+    private static void applyArchLoom(TemplateProject templateProject) {
         Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "dev.architectury.loom"));
         LoomGradleExtensionAPI loomPlugin = project.getExtensions().getByType(LoomGradleExtensionAPI.class);
         loomPlugin.silentMojangMappingsLicense();
 
         DependencyHandler dependencies = project.getDependencies();
-        dependencies.add("minecraft", "com.mojang:minecraft:" + minecraftVersion);
+        dependencies.add("minecraft", "com.mojang:minecraft:" + templateProject.property(Constants.MINECRAFT_VERSION_KEY));
         dependencies.add("mappings", loomPlugin.officialMojangMappings());
     }
 
-    private void applyArchPlugin(Project project, Platform platform) {
+    private static void applyArchPlugin(TemplateProject templateProject) {
+        Project project = templateProject.getProject();
         project.apply(Map.of("plugin", "architectury-plugin"));
         ArchitectPluginExtension extension = project.getExtensions().getByType(ArchitectPluginExtension.class);
+        Platform platform = templateProject.getPlatform();
         switch (platform) {
             case COMMON -> {
-                extension.common(((String) project.property("template.enabled_platforms")).split(",")); // todo: fixme
+                extension.common((templateProject.<HashSet<String>>property(Constants.TEMPLATE_ENABLED_PLATFORMS_KEY)));
                 extension.setInjectInjectables(false);
             }
             case FABRIC, QUILT, FORGE -> extension.loader(platform.getName());
         }
     }
 
-    private void applyFabric(TemplateProject templateProject, Project target) {
+    private static void applyFabric(TemplateProject templateProject) {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "fabric");
-        this.applyArchLoom(templateProject);
+        GradlePlugin.applyArchLoom(templateProject);
         DependencyHandler dependencies = project.getDependencies();
         dependencies.add("modImplementation", "net.fabricmc:fabric-loader:" + templateProject.property("fabric_loader_version"));
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
@@ -315,10 +362,10 @@ public final class GradlePlugin implements Plugin<Project> {
         });
     }
 
-    private void applyQuilt(TemplateProject templateProject, Project target) {
+    private static void applyQuilt(TemplateProject templateProject) {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "quilt");
-        this.applyArchLoom(templateProject);
+        GradlePlugin.applyArchLoom(templateProject);
         project.getRepositories().maven(repo -> {
             repo.setName("Quilt Release Maven");
             repo.setUrl("https://maven.quiltmc.org/repository/release/");
@@ -349,11 +396,11 @@ public final class GradlePlugin implements Plugin<Project> {
         });
     }
 
-    private void applyForge(TemplateProject templateProject, Project target) {
+    private static void applyForge(TemplateProject templateProject) {
         Project project = templateProject.getProject();
         project.getExtensions().getExtraProperties().set("loom.platform", "forge");
-        this.applyArchLoom(templateProject);
-        project.getDependencies().add("forge", "net.minecraftforge:forge:" + minecraftVersion + "-" + templateProject.property("forge_version"));
+        GradlePlugin.applyArchLoom(templateProject);
+        project.getDependencies().add("forge", "net.minecraftforge:forge:" + templateProject.property(Constants.MINECRAFT_VERSION_KEY) + "-" + templateProject.property("forge_version"));
 
         project.getExtensions().configure(LoomGradleExtensionAPI.class, extension -> {
             if (templateProject.usesDataGen()) {
@@ -375,7 +422,7 @@ public final class GradlePlugin implements Plugin<Project> {
                         settings.programArg(project.file("src/main/resources").getAbsolutePath());
                         templateProject.ifCommonProjectPresent(commonProject -> {
                             settings.programArg("--existing");
-                            settings.programArg(commonProject.file("src/main/resources").getAbsolutePath());
+                            settings.programArg(commonProject.getProject().file("src/main/resources").getAbsolutePath());
                         });
                         settings.runDir("build/" + project.getName() + "-datagen");
                     });

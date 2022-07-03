@@ -7,18 +7,13 @@ import java.util.function.Consumer;
 
 public final class TemplateProject {
     private final Project project;
-    private final Project commonProject;
+    private TemplateProject commonProject;
     private Boolean producesReleaseArtifact, producesMavenArtifact;
     private Boolean usesDataGen;
     private Platform platform;
 
     public TemplateProject(Project project) {
         this.project = project;
-        if (project.hasProperty(Constants.TEMPLATE_COMMON_PROJECT_KEY)) {
-            this.commonProject = project.getParent().getChildProjects().get(this.<String>property(Constants.TEMPLATE_COMMON_PROJECT_KEY));
-        } else {
-            this.commonProject = null;
-        }
     }
 
     public Project getProject() {
@@ -53,7 +48,15 @@ public final class TemplateProject {
         return platform;
     }
 
-    public void ifCommonProjectPresent(Consumer<Project> consumer) {
+    public void setCommonProject(TemplateProject commonProject) {
+        if (this.commonProject == null) {
+            this.commonProject = commonProject;
+        } else {
+            throw new IllegalStateException("Tried setting common project twice for " + project.getName());
+        }
+    }
+
+    public void ifCommonProjectPresent(Consumer<TemplateProject> consumer) {
         if (commonProject != null) {
             consumer.accept(commonProject);
         }
@@ -64,8 +67,7 @@ public final class TemplateProject {
         return (T) project.property(name);
     }
 
-    public <T> T rootProperty(String name) {
-        //noinspection unchecked
-        return (T) project.getRootProject().property(name);
+    public TemplateProject getCommonProject() {
+        return commonProject;
     }
 }

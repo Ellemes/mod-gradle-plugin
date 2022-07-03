@@ -9,6 +9,7 @@ public final class Constants {
 
     public static final String TEMPLATE_PLATFORM_KEY = "template.platform";
     public static final String TEMPLATE_COMMON_PROJECT_KEY = "template.commonProject";
+    public static final String TEMPLATE_ENABLED_PLATFORMS_KEY = "template.enabled_platforms";
 
     public static final String TEMPLATE_PROPERTY_KEY = "template_project";
     public static final String MINECRAFT_VERSION_KEY = "minecraft_version";

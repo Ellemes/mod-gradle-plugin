@@ -44,10 +44,14 @@ public final class DependencyDownloadHelper {
     private final Map<String, CachedVersionCoordinates> quiltedFabricApiDependables = new HashMap<>();
     private Path cacheDir;
 
-    public DependencyDownloadHelper(Path cacheDir) throws URISyntaxException {
-        fabricMaven = new URI("https://maven.fabricmc.net/");
-        quiltSnapshotMaven = new URI("https://maven.quiltmc.org/repository/snapshot/");
-        quiltReleaseMaven = new URI("https://maven.quiltmc.org/repository/release/");
+    public DependencyDownloadHelper(Path cacheDir) {
+        try {
+            fabricMaven = new URI("https://maven.fabricmc.net/");
+            quiltSnapshotMaven = new URI("https://maven.quiltmc.org/repository/snapshot/");
+            quiltReleaseMaven = new URI("https://maven.quiltmc.org/repository/release/");
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException("Author made a typo... ", e);
+        }
         serializer = new Persister();
         if (Files.notExists(cacheDir)) {
             try {
