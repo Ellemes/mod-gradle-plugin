@@ -208,6 +208,7 @@ public final class GradlePlugin implements Plugin<Project> {
             ((Jar) project.getTasks().getByName("jar")).getArchiveClassifier().set("dev");
 
             ShadowJar shadowJar = (ShadowJar) project.getTasks().getByName("shadowJar");
+            shadowJar.exclude("architectury.common.json"); // Required, added by architectury to common jar?
             shadowJar.setConfigurations(List.of(shadowCommonConfiguration));
             shadowJar.getArchiveClassifier().set("dev-shadow");
 
